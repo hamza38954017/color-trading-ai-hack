@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Panel — Predictor 4.0</title>
+<style>
+@font-face{font-family:'Orbitron';font-weight:700;font-display:swap;src:url('https://fonts.gstatic.com/s/orbitron/v35/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1ny_CmBoWg2.ttf') format('truetype')}
+@font-face{font-family:'Orbitron';font-weight:900;font-display:swap;src:url('https://fonts.gstatic.com/s/orbitron/v35/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nysimBoWg2.ttf') format('truetype')}
+@font-face{font-family:'Rajdhani';font-weight:600;font-display:swap;src:url('https://fonts.gstatic.com/s/rajdhani/v17/LDI2apCSOBg7S-QT7pbYF_OreeI.ttf') format('truetype')}
+@font-face{font-family:'Rajdhani';font-weight:700;font-display:swap;src:url('https://fonts.gstatic.com/s/rajdhani/v17/LDI2apCSOBg7S-QT7pa8FvOreeI.ttf') format('truetype')}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --pg:#00ff41;--ddb:#050807;--db:#0a0e0d;--card:#0d1a10;--card2:#0a1a0e;
+  --b:rgba(0,255,65,.18);--b2:rgba(0,255,65,.08);--tg:#6a9070;--tw:#e0f0e4;
+  --ar:#ff0033;--or:orange;--gg:rgba(0,255,65,.5);--sidebar:220px;
+}
+html,body{height:100%;overflow-x:hidden}
+body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw)}
+
+/* ── SIDEBAR ── */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar);background:var(--db);border-right:1px solid var(--b);display:flex;flex-direction:column;z-index:100;transition:transform .3s;overflow-y:auto}
+.sidebar.closed{transform:translateX(-100%)}
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-logo img{width:32px;height:32px;filter:drop-shadow(0 0 8px var(--gg))}
+.sb-title{font-family:Orbitron,sans-serif;font-size:12px;font-weight:900;color:var(--pg);line-height:1.2}
+.sb-sub{font-size:9px;color:var(--tg);letter-spacing:2px;margin-top:2px}
+.sb-section{padding:12px 10px 2px}
+.sb-sec-label{font-size:9px;font-weight:700;color:var(--tg);letter-spacing:2px;text-transform:uppercase;padding:0 6px;margin-bottom:4px}
+.nav-btn{display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;border:none;background:transparent;color:var(--tg);font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;text-align:left;border-radius:4px;margin-bottom:2px;letter-spacing:.5px;text-decoration:none}
+.nav-btn:hover{background:var(--b2);color:var(--tw)}
+.nav-btn.active{background:rgba(0,255,65,.15);color:var(--pg);border-left:2px solid var(--pg);padding-left:10px}
+.nav-badge{background:var(--ar);color:#fff;border-radius:99px;font-size:9px;padding:1px 6px;font-weight:700;margin-left:auto}
+.sb-footer{margin-top:auto;padding:12px;border-top:1px solid var(--b);flex-shrink:0}
+.btn-logout-sb{width:100%;background:transparent;border:1px solid rgba(255,0,51,.4);color:var(--ar);padding:9px;font-family:Orbitron,sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:.2s}
+.btn-logout-sb:hover{background:rgba(255,0,51,.1)}
+
+/* ── TOPBAR ── */
+.topbar{display:none;position:sticky;top:0;z-index:90;background:var(--db);border-bottom:1px solid var(--b);padding:10px 14px;align-items:center;gap:12px}
+.hamburger{background:none;border:1px solid var(--b);color:var(--pg);padding:6px 10px;cursor:pointer;font-size:16px}
+.topbar-title{font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:var(--pg)}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sidebar);min-height:100vh;display:flex;flex-direction:column}
+.page-header{background:var(--db);border-bottom:1px solid var(--b);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.page-title{font-family:Orbitron,sans-serif;font-size:17px;font-weight:900;color:var(--pg)}
+.page-sub{font-size:12px;color:var(--tg);margin-top:2px;letter-spacing:.5px}
+.content{padding:20px 24px;flex:1}
+
+/* ── PANELS ── */
+.panel{display:none;flex-direction:column;gap:18px}
+.panel.active{display:flex}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.stat-card{background:var(--card);border:1px solid var(--b);padding:16px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:-20px;right:-20px;width:70px;height:70px;border-radius:50%;opacity:.06}
+.sc-green::after{background:var(--pg)}.sc-red::after{background:var(--ar)}.sc-or::after{background:orange}.sc-blue::after{background:#3390ec}
+.stat-icon{font-size:18px;margin-bottom:6px}
+.stat-lbl{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--tg);text-transform:uppercase}
+.stat-num{font-family:Orbitron,sans-serif;font-size:26px;font-weight:900;margin-top:4px}
+.sn-green{color:var(--pg)}.sn-red{color:var(--ar)}.sn-or{color:orange}.sn-blue{color:#3390ec}
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--card);border:1px solid var(--b);overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:500px}
+th{background:rgba(0,255,65,.05);padding:10px 14px;text-align:left;font-size:9px;font-weight:700;color:var(--tg);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--b);white-space:nowrap}
+td{padding:10px 14px;font-size:13px;border-bottom:1px solid rgba(0,255,65,.04)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,255,65,.02)}
+
+/* ── BADGE ── */
+.badge{display:inline-block;padding:2px 9px;font-size:10px;font-weight:700;letter-spacing:.5px}
+.bg-green{background:rgba(0,255,65,.12);color:var(--pg);border:1px solid rgba(0,255,65,.3)}
+.bg-red{background:rgba(255,0,51,.12);color:var(--ar);border:1px solid rgba(255,0,51,.3)}
+.bg-or{background:rgba(255,165,0,.12);color:orange;border:1px solid rgba(255,165,0,.3)}
+.bg-blue{background:rgba(51,144,236,.12);color:#3390ec;border:1px solid rgba(51,144,236,.3)}
+.bg-gray{background:rgba(160,160,160,.1);color:#888;border:1px solid rgba(160,160,160,.2)}
+
+/* ── FORM ── */
+.form-card{background:var(--card);border:1px solid var(--b);padding:20px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.f-row label{display:block;font-size:9px;font-weight:700;color:var(--tg);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.f-row input,.f-row select,.f-row textarea{width:100%;background:rgba(0,0,0,.5);border:1px solid var(--b);padding:10px 12px;color:var(--tw);font-family:Rajdhani,sans-serif;font-size:14px;font-weight:600;outline:none;transition:.2s}
+.f-row input:focus,.f-row select:focus,.f-row textarea:focus{border-color:var(--pg);box-shadow:0 0 0 2px rgba(0,255,65,.1)}
+.f-row select option{background:var(--card)}
+.f-row textarea{resize:vertical;min-height:70px}
+.f-hint{font-size:10px;color:var(--tg);margin-top:4px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;font-family:Orbitron,sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:.2s;text-transform:uppercase}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--pg);color:var(--ddb)}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-danger{background:var(--ar);color:#fff}
+.btn-danger:hover{filter:brightness(1.1)}
+.btn-warn{background:orange;color:#000}
+.btn-outline{background:transparent;border:1px solid var(--b);color:var(--tw)}
+.btn-outline:hover{border-color:var(--pg);color:var(--pg)}
+.btn-sm{padding:5px 10px;font-size:8px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── TOGGLE ── */
+.sw{position:relative;width:44px;height:22px;flex-shrink:0}
+.sw input{display:none}
+.sw-slider{position:absolute;inset:0;background:rgba(255,255,255,.1);cursor:pointer;transition:.3s;border-radius:11px}
+.sw-slider::before{content:'';position:absolute;width:16px;height:16px;top:3px;left:3px;background:#fff;border-radius:50%;transition:.3s}
+.sw input:checked+.sw-slider{background:var(--pg)}
+.sw input:checked+.sw-slider::before{transform:translateX(22px)}
+
+/* ── SEARCH ── */
+.search-box{background:rgba(0,0,0,.5);border:1px solid var(--b);padding:9px 13px;color:var(--tw);font-family:Rajdhani,sans-serif;font-size:13px;font-weight:600;outline:none;width:220px}
+.search-box:focus{border-color:var(--pg)}
+
+/* ── SEC HDR ── */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.sec-title{font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:var(--pg);letter-spacing:1px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--b);padding:11px 18px;font-size:12px;font-weight:600;z-index:9999;transition:opacity .3s,transform .3s;opacity:0;transform:translateY(12px);pointer-events:none}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.ok{border-color:rgba(0,255,65,.5);color:var(--pg)}
+#toast.err{border-color:rgba(255,0,51,.5);color:var(--ar)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:999;padding:16px}
+.modal-overlay.active{display:flex}
+.modal-box{background:var(--db);border:1px solid var(--b);padding:28px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto}
+.modal-title{font-family:Orbitron,sans-serif;font-size:14px;font-weight:700;color:var(--pg);margin-bottom:18px}
+.modal-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end}
+
+/* ── MONO ── */
+.mono{font-family:Orbitron,sans-serif;font-size:11px;color:var(--pg);letter-spacing:1px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0);box-shadow:4px 0 30px rgba(0,0,0,.6)}
+  .main{margin-left:0}
+  .topbar{display:flex}
+  .content{padding:14px}
+  .form-grid{grid-template-columns:1fr}
+  .stat-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){.stat-grid{grid-template-columns:1fr 1fr}.stat-num{font-size:20px}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <img src="/website/assets/images/logo.png" alt="Logo" onerror="this.style.display='none'">
+    <div><div class="sb-title">PREDICTOR 4.0</div><div class="sb-sub">ADMIN PANEL</div></div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-sec-label">Overview</div>
+    <button class="nav-btn active" onclick="showPanel('dashboard')">📊 Dashboard</button>
+  </div>
+  <div class="sb-section">
+    <div class="sb-sec-label">Users</div>
+    <button class="nav-btn" onclick="showPanel('users')">👥 All Users</button>
+    <button class="nav-btn" onclick="showPanel('banned')">🚫 Banned Users</button>
+    <button class="nav-btn" onclick="showPanel('referrals')">🤝 Referrals</button>
+  </div>
+  <div class="sb-section">
+    <div class="sb-sec-label">Licenses</div>
+    <button class="nav-btn" onclick="showPanel('licenses')">🔑 Licenses</button>
+    <button class="nav-btn" onclick="showPanel('create_license')">➕ Create License</button>
+  </div>
+  <div class="sb-section">
+    <div class="sb-sec-label">Finance</div>
+    <button class="nav-btn" onclick="showPanel('payments')">💳 Payments</button>
+    <button class="nav-btn" onclick="showPanel('withdrawals')">🏦 Withdrawals</button>
+  </div>
+  <div class="sb-section">
+    <div class="sb-sec-label">Support</div>
+    <a class="nav-btn" href="/support" target="_blank">🎧 Support Chats <span id="supportBadge" class="nav-badge" style="display:none">0</span></a>
+    <button class="nav-btn" onclick="showPanel('broadcast')">📢 Broadcast</button>
+  </div>
+  <div class="sb-section">
+    <div class="sb-sec-label">Analytics</div>
+    <button class="nav-btn" onclick="showPanel('logs')">📋 Access Logs</button>
+    <button class="nav-btn" onclick="showPanel('daily_stats')">📈 Daily Stats</button>
+  </div>
+  <div class="sb-section">
+    <div class="sb-sec-label">Config</div>
+    <button class="nav-btn" onclick="showPanel('settings')">⚙️ Bot Settings</button>
+    <button class="nav-btn" onclick="showPanel('website_settings')">🌐 Website Settings</button>
+  </div>
+
+  <div class="sb-footer">
+    <a href="/admin/logout" class="btn-logout-sb">LOGOUT →</a>
+  </div>
+</nav>
+
+<!-- TOPBAR (mobile) -->
+<div class="topbar" id="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <span class="topbar-title" id="topbarTitle">DASHBOARD</span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title" id="pageTitle">DASHBOARD</div>
+      <div class="page-sub" id="pageSub">Predictor 4.0 Control Panel</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="clockDisplay" style="font-family:Orbitron,sans-serif;font-size:11px;color:var(--tg)"></span>
+    </div>
+  </div>
+  <div class="content">
+
+  <!-- ═══════════════ DASHBOARD ═══════════════ -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="stat-grid" id="statGrid">
+      <div class="stat-card sc-blue"><div class="stat-icon">👥</div><div class="stat-lbl">Total Users</div><div class="stat-num sn-blue" id="s-users">—</div></div>
+      <div class="stat-card sc-green"><div class="stat-icon">🔑</div><div class="stat-lbl">Active Licenses</div><div class="stat-num sn-green" id="s-active-lic">—</div></div>
+      <div class="stat-card sc-or"><div class="stat-icon">💳</div><div class="stat-lbl">Total Income</div><div class="stat-num sn-or" id="s-income">—</div></div>
+      <div class="stat-card sc-green"><div class="stat-icon">✅</div><div class="stat-lbl">Paid Orders</div><div class="stat-num sn-green" id="s-paid">—</div></div>
+      <div class="stat-card sc-or"><div class="stat-icon">🏦</div><div class="stat-lbl">Pending Withdrawals</div><div class="stat-num sn-or" id="s-wd">—</div></div>
+      <div class="stat-card sc-red"><div class="stat-icon">🚫</div><div class="stat-lbl">Banned Users</div><div class="stat-num sn-red" id="s-banned">—</div></div>
+      <div class="stat-card sc-blue"><div class="stat-icon">🆕</div><div class="stat-lbl">New Users Today</div><div class="stat-num sn-blue" id="s-new-today">—</div></div>
+      <div class="stat-card sc-green"><div class="stat-icon">👁️</div><div class="stat-lbl">Site Visits Today</div><div class="stat-num sn-green" id="s-visits">—</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ USERS ═══════════════ -->
+  <div class="panel" id="panel-users">
+    <div class="sec-hdr">
+      <div class="sec-title">ALL USERS</div>
+      <input class="search-box" id="usersSearch" placeholder="Search name/username/chatid…" oninput="filterTable('usersBody',this.value,[0,1,2])">
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Chat ID</th><th>Full Name</th><th>Username</th><th>Wallet</th>
+          <th>Spent</th><th>Referrals</th><th>Joined</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="usersBody"><tr><td colspan="9" style="text-align:center;color:var(--tg)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ BANNED ═══════════════ -->
+  <div class="panel" id="panel-banned">
+    <div class="sec-hdr"><div class="sec-title">BANNED USERS</div></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Chat ID</th><th>Full Name</th><th>Username</th><th>Reason</th><th>Banned At</th><th>Actions</th></tr></thead>
+        <tbody id="bannedBody"><tr><td colspan="6" style="text-align:center;color:var(--tg)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ REFERRALS ═══════════════ -->
+  <div class="panel" id="panel-referrals">
+    <div class="sec-hdr"><div class="sec-title">REFERRAL REPORT</div></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Referrer</th><th>Referred User</th><th>Status</th><th>Commission Earned</th><th>Joined</th></tr></thead>
+        <tbody id="referralsBody"><tr><td colspan="5" style="text-align:center;color:var(--tg)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ LICENSES ═══════════════ -->
+  <div class="panel" id="panel-licenses">
+    <div class="sec-hdr">
+      <div class="sec-title">LICENSE KEYS</div>
+      <input class="search-box" id="licSearch" placeholder="Search key/chatid/name…" oninput="filterTable('licBody',this.value,[0,1,2,3])">
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Key</th><th>Chat ID</th><th>Full Name</th><th>Plan</th>
+          <th>Amount</th><th>Status</th><th>Expires</th><th>Created By</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="licBody"><tr><td colspan="9" style="text-align:center;color:var(--tg)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ CREATE LICENSE ═══════════════ -->
+  <div class="panel" id="panel-create_license">
+    <div class="sec-hdr"><div class="sec-title">CREATE LICENSE MANUALLY</div></div>
+    <div class="form-card">
+      <div class="form-grid">
+        <div class="f-row"><label>Telegram Chat ID</label>
+          <input type="text" id="cl-chatid" placeholder="e.g. 123456789"></div>
+        <div class="f-row"><label>Username</label>
+          <input type="text" id="cl-username" placeholder="without @"></div>
+        <div class="f-row"><label>Full Name</label>
+          <input type="text" id="cl-fullname" placeholder="User full name"></div>
+        <div class="f-row"><label>Plan</label>
+          <select id="cl-plan">
+            <option value="7day">7 Days — ₹2,000</option>
+            <option value="15day">15 Days — ₹5,000</option>
+            <option value="1month">1 Month — ₹8,000</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" onclick="createLicense()">CREATE LICENSE KEY</button>
+      </div>
+      <div id="cl-result" style="margin-top:14px;display:none"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PAYMENTS ═══════════════ -->
+  <div class="panel" id="panel-payments">
+    <div class="sec-hdr"><div class="sec-title">PAYMENT RECORDS</div></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Order ID</th><th>Chat ID</th><th>Full Name</th><th>Plan</th>
+          <th>Amount</th><th>Status</th><th>Payment Link</th><th>Date</th>
+        </tr></thead>
+        <tbody id="paymentsBody"><tr><td colspan="8" style="text-align:center;color:var(--tg)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ WITHDRAWALS ═══════════════ -->
+  <div class="panel" id="panel-withdrawals">
+    <div class="sec-hdr"><div class="sec-title">WITHDRAWAL REQUESTS</div></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>ID</th><th>Chat ID</th><th>Full Name</th><th>Amount</th>
+          <th>Account/UPI</th><th>Status</th><th>Date</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="withdrawalsBody"><tr><td colspan="8" style="text-align:center;color:var(--tg)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ BROADCAST ═══════════════ -->
+  <div class="panel" id="panel-broadcast">
+    <div class="sec-hdr"><div class="sec-title">BROADCAST MESSAGE</div></div>
+    <div class="form-card">
+      <div class="form-grid">
+        <div class="f-row" style="grid-column:1/-1"><label>Message Text</label>
+          <textarea id="bc-text" placeholder="Message to send (supports Markdown: *bold* _italic_)" rows="4"></textarea></div>
+        <div class="f-row"><label>Image URL (optional)</label>
+          <input type="url" id="bc-img-url" placeholder="https://…"></div>
+        <div class="f-row"><label>Or Upload Image</label>
+          <input type="file" id="bc-img-file" accept="image/*" style="background:rgba(0,0,0,.5);border:1px solid var(--b);padding:9px 12px;color:var(--tw);width:100%"></div>
+        <div class="f-row"><label>Inline Button Text (optional)</label>
+          <input type="text" id="bc-btn-text" placeholder="Click Here"></div>
+        <div class="f-row"><label>Inline Button URL (optional)</label>
+          <input type="url" id="bc-btn-url" placeholder="https://…"></div>
+        <div class="f-row"><label>Send To</label>
+          <select id="bc-target">
+            <option value="main">Main Bot Users</option>
+            <option value="support">Support Bot Users</option>
+            <option value="both">Both Bots</option>
+          </select></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="sendBroadcast()">📢 SEND BROADCAST</button>
+        <div id="bc-status" style="font-size:13px;color:var(--tg)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ACCESS LOGS ═══════════════ -->
+  <div class="panel" id="panel-logs">
+    <div class="sec-hdr"><div class="sec-title">ACCESS LOGS</div><button class="btn btn-outline btn-sm" onclick="loadLogs()">🔄 Refresh</button></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>Chat ID</th><th>Full Name</th><th>IP</th><th>Device</th><th>Action</th></tr></thead>
+        <tbody id="logsBody"><tr><td colspan="6" style="text-align:center;color:var(--tg)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ DAILY STATS ═══════════════ -->
+  <div class="panel" id="panel-daily_stats">
+    <div class="sec-hdr"><div class="sec-title">DAILY STATISTICS</div></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>New Users</th><th>Site Visits</th></tr></thead>
+        <tbody id="statsBody"><tr><td colspan="3" style="text-align:center;color:var(--tg)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ BOT SETTINGS ═══════════════ -->
+  <div class="panel" id="panel-settings">
+    <div class="sec-hdr"><div class="sec-title">BOT & SYSTEM SETTINGS</div></div>
+    <div class="form-card">
+      <div class="form-grid" id="settingsForm">
+        <div class="f-row"><label>Bot Token</label><input type="text" id="s-bot_token" placeholder="Main bot token"></div>
+        <div class="f-row"><label>Support Bot Token</label><input type="text" id="s-support_bot_token" placeholder="Support bot token"></div>
+        <div class="f-row"><label>Bot Username</label><input type="text" id="s-bot_username" placeholder="without @"></div>
+        <div class="f-row"><label>Support Bot Username</label><input type="text" id="s-support_bot_username" placeholder="without @"></div>
+        <div class="f-row"><label>Channel ID</label><input type="text" id="s-channel_id" placeholder="-100xxxxxxxxx"></div>
+        <div class="f-row"><label>Channel Invite Link</label><input type="text" id="s-channel_invite" placeholder="https://t.me/…"></div>
+        <div class="f-row"><label>Admin Chat ID</label><input type="text" id="s-admin_chat_id" placeholder="Your Telegram chat ID"></div>
+        <div class="f-row"><label>Admin Username</label><input type="text" id="s-admin_username" placeholder="Admin login username"></div>
+        <div class="f-row"><label>Admin Password</label><input type="password" id="s-admin_password" placeholder="New password (leave blank to keep)"></div>
+        <div class="f-row"><label>Notify Chat IDs (comma-sep)</label><input type="text" id="s-notify_chat_ids" placeholder="chatid1,chatid2"></div>
+        <div class="f-row"><label>Site URL</label><input type="text" id="s-site_url" placeholder="https://yourapp.onrender.com"></div>
+        <div class="f-row"><label>Panel URL</label><input type="text" id="s-panel_url" placeholder="https://yourapp.onrender.com"></div>
+        <div class="f-row"><label>KimiPay App ID</label><input type="text" id="s-kimipay_app_id" placeholder="KimiPay App ID"></div>
+        <div class="f-row"><label>KimiPay API Key</label><input type="text" id="s-kimipay_api_key" placeholder="KimiPay API Key"></div>
+        <div class="f-row"><label>Referral Commission (%)</label><input type="number" id="s-refer_commission" placeholder="10" min="0" max="100"></div>
+        <div class="f-row"><label>Min Withdrawal (₹)</label><input type="number" id="s-min_withdrawal" placeholder="100"></div>
+        <div class="f-row"><label>Max Withdrawal (₹)</label><input type="number" id="s-max_withdrawal" placeholder="50000"></div>
+        <div class="f-row" style="grid-column:1/-1"><label>Privacy Policy</label>
+          <textarea id="s-privacy_policy" rows="4" placeholder="Privacy policy text (Markdown)"></textarea></div>
+        <div class="f-row" style="grid-column:1/-1"><label>Terms & Conditions</label>
+          <textarea id="s-terms_conditions" rows="4" placeholder="Terms text (Markdown)"></textarea></div>
+        <div class="f-row" style="grid-column:1/-1"><label>Support Greeting</label>
+          <textarea id="s-support_greeting" rows="3" placeholder="Welcome message for support bot"></textarea></div>
+        <div class="f-row" style="grid-column:1/-1"><label>Support Auto-Reply</label>
+          <textarea id="s-support_auto_reply" rows="2" placeholder="Auto-reply when user sends message (leave blank to disable)"></textarea></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveSettings()">💾 SAVE SETTINGS</button>
+        <div id="settings-status" style="font-size:13px;color:var(--tg)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ WEBSITE SETTINGS ═══════════════ -->
+  <div class="panel" id="panel-website_settings">
+    <div class="sec-hdr"><div class="sec-title">WEBSITE SETTINGS</div></div>
+    <div class="form-card">
+      <div class="form-grid">
+        <div class="f-row"><label>Version Badge Text</label><input type="text" id="ws-homeVersionBadge" placeholder="VERSION 4.0"></div>
+        <div class="f-row"><label>Title Word</label><input type="text" id="ws-homeTitleWord" placeholder="PREDICTOR"></div>
+        <div class="f-row"><label>Title Number</label><input type="text" id="ws-homeTitleNum" placeholder="4.0"></div>
+        <div class="f-row"><label>Subtitle</label><input type="text" id="ws-homeSubtitle" placeholder="ALL GAMES CONNECTED…"></div>
+        <div class="f-row"><label>App Main Title</label><input type="text" id="ws-appMainTitle" placeholder="WINGO TRADING"></div>
+        <div class="f-row"><label>App Subtitle</label><input type="text" id="ws-appMainSub" placeholder="SELECT YOUR NODE…"></div>
+        <div class="f-row"><label>Join Channel URL</label><input type="url" id="ws-joinChannelUrl" placeholder="https://t.me/…"></div>
+        <div class="f-row"><label>Contact URL</label><input type="url" id="ws-contactUrl" placeholder="https://t.me/…"></div>
+        <div class="f-row"><label>Server Status</label><input type="text" id="ws-serverStatus" placeholder="Active"></div>
+        <div class="f-row"><label>Prediction Limit</label><input type="text" id="ws-predictionLimit" placeholder="Unlimited"></div>
+        <div class="f-row" style="grid-column:1/-1"><label>Ticker Text</label>
+          <input type="text" id="ws-tickerText" placeholder="Ticker scrolling text…"></div>
+        <div class="f-row" style="grid-column:1/-1">
+          <label style="display:flex;align-items:center;gap:10px;flex-direction:row">
+            Maintenance Mode
+            <label class="sw"><input type="checkbox" id="ws-maintenanceMode"><span class="sw-slider"></span></label>
+          </label>
+        </div>
+        <div class="f-row" style="grid-column:1/-1"><label>Maintenance Message</label>
+          <textarea id="ws-maintenanceMessage" rows="2" placeholder="Maintenance message for users"></textarea></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveWebsiteSettings()">💾 SAVE WEBSITE SETTINGS</button>
+        <div id="ws-status" style="font-size:13px;color:var(--tg)"></div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- end content -->
+</div><!-- end main -->
+
+<!-- EDIT USER MODAL -->
+<div class="modal-overlay" id="editUserModal">
+  <div class="modal-box">
+    <div class="modal-title">EDIT USER</div>
+    <input type="hidden" id="eu-chatid">
+    <div class="f-row" style="margin-bottom:14px"><label>Full Name</label><input type="text" id="eu-fullname"></div>
+    <div class="f-row" style="margin-bottom:14px"><label>Username</label><input type="text" id="eu-username"></div>
+    <div class="f-row" style="margin-bottom:14px"><label>Wallet Balance (₹)</label><input type="number" id="eu-wallet"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeModal('editUserModal')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveUser()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT LICENSE MODAL -->
+<div class="modal-overlay" id="editLicModal">
+  <div class="modal-box">
+    <div class="modal-title">EDIT LICENSE</div>
+    <input type="hidden" id="el-id">
+    <div class="f-row" style="margin-bottom:14px"><label>Chat ID</label><input type="text" id="el-chatid"></div>
+    <div class="f-row" style="margin-bottom:14px"><label>Full Name</label><input type="text" id="el-fullname"></div>
+    <div class="f-row" style="margin-bottom:14px"><label>Plan Label</label><input type="text" id="el-plan"></div>
+    <div class="f-row" style="margin-bottom:14px"><label>Amount (₹)</label><input type="number" id="el-amount"></div>
+    <div class="f-row" style="margin-bottom:14px">
+      <label>Active</label>
+      <label class="sw"><input type="checkbox" id="el-active"><span class="sw-slider"></span></label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeModal('editLicModal')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveLicense()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function toast(msg, ok=true){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(ok?'ok':'err');
+  setTimeout(()=>el.className='',3000);
+}
+function showModal(id){document.getElementById(id).classList.add('active')}
+function closeModal(id){document.getElementById(id).classList.remove('active')}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmt(v){return '₹'+Number(v||0).toLocaleString('en-IN')}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
+
+// Filter table rows by search text
+function filterTable(tbodyId, query, cols){
+  const q=query.toLowerCase();
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(tr=>{
+    const show=cols.some(ci=>{
+      const td=tr.querySelectorAll('td')[ci];
+      return td&&td.textContent.toLowerCase().includes(q);
+    });
+    tr.style.display=q&&!show?'none':'';
+  });
+}
+
+// Clock
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clockDisplay').textContent=now.toLocaleTimeString();
+}
+setInterval(updateClock,1000); updateClock();
+
+// ── Panel navigation ──────────────────────────────────────────────────────────
+const panelTitles={
+  dashboard:'DASHBOARD', users:'ALL USERS', banned:'BANNED USERS',
+  referrals:'REFERRALS', licenses:'LICENSE KEYS', create_license:'CREATE LICENSE',
+  payments:'PAYMENTS', withdrawals:'WITHDRAWALS', broadcast:'BROADCAST',
+  logs:'ACCESS LOGS', daily_stats:'DAILY STATS', settings:'BOT SETTINGS',
+  website_settings:'WEBSITE SETTINGS',
+};
+const loaderMap={
+  dashboard: loadDashboard, users: loadUsers, banned: loadBanned,
+  referrals: loadReferrals, licenses: loadLicenses, payments: loadPayments,
+  withdrawals: loadWithdrawals, logs: loadLogs, daily_stats: loadDailyStats,
+  settings: loadSettings, website_settings: loadWebsiteSettings,
+};
+
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const panel = document.getElementById('panel-'+id);
+  if(panel) panel.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    if(b.textContent.trim().toLowerCase().includes(panelTitles[id]?.toLowerCase().slice(0,5)||'')){
+      // noop - handle active state via explicit click
+    }
+  });
+  const title = panelTitles[id]||id.toUpperCase();
+  document.getElementById('pageTitle').textContent = title;
+  document.getElementById('topbarTitle').textContent = title;
+  if(loaderMap[id]) loaderMap[id]();
+  // close mobile sidebar
+  document.getElementById('sidebar').classList.remove('open');
+  // update active nav
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    if(b.getAttribute('onclick')===`showPanel('${id}')`) b.classList.add('active');
+  });
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function loadDashboard(){
+  const r=await fetch('/admin/api/dashboard');
+  const d=await r.json();
+  document.getElementById('s-users').textContent   = d.total_users||0;
+  document.getElementById('s-active-lic').textContent = d.active_licenses||0;
+  document.getElementById('s-income').textContent  = d.total_income_inr||'₹0';
+  document.getElementById('s-paid').textContent    = d.paid_count||0;
+  document.getElementById('s-wd').textContent      = d.pending_withdrawals||0;
+  document.getElementById('s-banned').textContent  = d.banned_users||0;
+  document.getElementById('s-new-today').textContent = d.new_users_today||0;
+  document.getElementById('s-visits').textContent  = d.visits_today||0;
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+async function loadUsers(){
+  const r=await fetch('/admin/api/users');
+  const users=await r.json();
+  const tb=document.getElementById('usersBody');
+  if(!users.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--tg)">No users yet.</td></tr>';return;}
+  tb.innerHTML=users.map(u=>`<tr>
+    <td class="mono">${esc(u.chat_id)}</td>
+    <td>${esc(u.full_name)}</td>
+    <td style="color:var(--tg)">@${esc(u.username)}</td>
+    <td style="color:var(--pg)">${fmt(u.wallet)}</td>
+    <td>${fmt(u.total_spent)}</td>
+    <td>${u.refer_count||0}</td>
+    <td style="color:var(--tg);font-size:11px">${(u.created_at||'').slice(0,10)}</td>
+    <td>${u.banned?'<span class="badge bg-red">BANNED</span>':'<span class="badge bg-green">ACTIVE</span>'}</td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="openEditUser('${esc(u.chat_id)}','${esc(u.full_name)}','${esc(u.username)}',${u.wallet||0})">Edit</button>
+      ${u.banned?
+        `<button class="btn btn-outline btn-sm" onclick="unbanUser('${esc(u.chat_id)}')">Unban</button>`:
+        `<button class="btn btn-danger btn-sm" onclick="banUser('${esc(u.chat_id)}')">Ban</button>`}
+    </td>
+  </tr>`).join('');
+}
+function openEditUser(cid,fn,un,wallet){
+  document.getElementById('eu-chatid').value=cid;
+  document.getElementById('eu-fullname').value=fn;
+  document.getElementById('eu-username').value=un;
+  document.getElementById('eu-wallet').value=wallet;
+  showModal('editUserModal');
+}
+async function saveUser(){
+  const cid=document.getElementById('eu-chatid').value;
+  const r=await fetch(`/admin/api/users/${cid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({full_name:document.getElementById('eu-fullname').value,
+      username:document.getElementById('eu-username').value,
+      wallet:parseFloat(document.getElementById('eu-wallet').value)||0})});
+  const d=await r.json();
+  if(d.ok){closeModal('editUserModal');toast('User updated!');loadUsers();}
+  else toast('Error: '+(d.error||'Failed'),false);
+}
+async function banUser(cid){
+  if(!confirm(`Ban user ${cid}?`))return;
+  const r=await fetch(`/admin/api/users/${cid}/ban`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:'Admin ban'})});
+  const d=await r.json();
+  if(d.ok){toast('User banned!');loadUsers();}else toast('Error',false);
+}
+async function unbanUser(cid){
+  const r=await fetch(`/admin/api/users/${cid}/unban`,{method:'POST'});
+  const d=await r.json();
+  if(d.ok){toast('User unbanned!');loadUsers();}else toast('Error',false);
+}
+
+// ── Banned ────────────────────────────────────────────────────────────────────
+async function loadBanned(){
+  const r=await fetch('/admin/api/banned');
+  const data=await r.json();
+  const tb=document.getElementById('bannedBody');
+  if(!data.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--tg)">No banned users.</td></tr>';return;}
+  tb.innerHTML=data.map(b=>`<tr>
+    <td class="mono">${esc(b.chat_id)}</td><td>${esc(b.full_name)}</td>
+    <td>@${esc(b.username)}</td><td style="color:var(--tg);font-size:11px">${esc(b.reason)}</td>
+    <td style="font-size:11px">${(b.banned_at||'').slice(0,16)}</td>
+    <td><button class="btn btn-outline btn-sm" onclick="unbanUser('${esc(b.chat_id)}')">Unban</button></td>
+  </tr>`).join('');
+}
+
+// ── Referrals ─────────────────────────────────────────────────────────────────
+async function loadReferrals(){
+  const r=await fetch('/admin/api/referrals');
+  const data=await r.json();
+  const tb=document.getElementById('referralsBody');
+  if(!data.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--tg)">No referrals.</td></tr>';return;}
+  tb.innerHTML=data.map(ref=>`<tr>
+    <td>${esc(ref.owner_name)} <span style="color:var(--tg);font-size:11px">(${esc(ref.owner_id)})</span></td>
+    <td>${esc(ref.ref_name)} <span style="color:var(--tg);font-size:11px">(${esc(ref.ref_id)})</span></td>
+    <td>${ref.status==='verified'?'<span class="badge bg-green">VERIFIED</span>':'<span class="badge bg-or">PENDING</span>'}</td>
+    <td style="color:var(--pg)">${ref.earned_str}</td>
+    <td style="font-size:11px;color:var(--tg)">${(ref.joined_at||'').slice(0,10)}</td>
+  </tr>`).join('');
+}
+
+// ── Licenses ─────────────────────────────────────────────────────────────────
+async function loadLicenses(){
+  const r=await fetch('/admin/api/licenses');
+  const data=await r.json();
+  const tb=document.getElementById('licBody');
+  if(!data.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--tg)">No licenses.</td></tr>';return;}
+  tb.innerHTML=data.map(l=>`<tr>
+    <td class="mono" style="font-size:10px">${esc(l.key)}</td>
+    <td class="mono" style="font-size:10px">${esc(l.chat_id)}</td>
+    <td>${esc(l.full_name)}</td>
+    <td>${esc(l.plan_label)}</td>
+    <td style="color:var(--pg)">${esc(l.amount_str)}</td>
+    <td>${l.expired?'<span class="badge bg-gray">EXPIRED</span>':l.active?'<span class="badge bg-green">ACTIVE</span>':'<span class="badge bg-red">INACTIVE</span>'}</td>
+    <td style="font-size:11px;color:var(--tg)">${esc(l.expiry_str)}</td>
+    <td><span class="badge bg-gray">${esc(l.created_by)}</span></td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="openEditLic('${esc(l._id)}','${esc(l.chat_id)}','${esc(l.full_name)}','${esc(l.plan_label)}',${l.amount||0},${l.active&&!l.expired})">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="revokeLic('${esc(l._id)}')">Revoke</button>
+    </td>
+  </tr>`).join('');
+}
+function openEditLic(id,cid,fn,plan,amount,active){
+  document.getElementById('el-id').value=id;
+  document.getElementById('el-chatid').value=cid;
+  document.getElementById('el-fullname').value=fn;
+  document.getElementById('el-plan').value=plan;
+  document.getElementById('el-amount').value=amount;
+  document.getElementById('el-active').checked=active;
+  showModal('editLicModal');
+}
+async function saveLicense(){
+  const id=document.getElementById('el-id').value;
+  const r=await fetch(`/admin/api/licenses/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:document.getElementById('el-chatid').value,
+      full_name:document.getElementById('el-fullname').value,
+      plan_label:document.getElementById('el-plan').value,
+      amount:parseFloat(document.getElementById('el-amount').value)||0,
+      active:document.getElementById('el-active').checked})});
+  const d=await r.json();
+  if(d.ok){closeModal('editLicModal');toast('License updated!');loadLicenses();}
+  else toast('Error',false);
+}
+async function revokeLic(id){
+  if(!confirm('Revoke this license key?'))return;
+  const r=await fetch(`/admin/api/licenses/${id}/revoke`,{method:'POST'});
+  const d=await r.json();
+  if(d.ok){toast('Revoked!');loadLicenses();}else toast('Error',false);
+}
+async function createLicense(){
+  const r=await fetch('/admin/api/licenses/create',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      chat_id:document.getElementById('cl-chatid').value.trim(),
+      username:document.getElementById('cl-username').value.trim(),
+      full_name:document.getElementById('cl-fullname').value.trim(),
+      plan_id:document.getElementById('cl-plan').value,
+    })});
+  const d=await r.json();
+  const res=document.getElementById('cl-result');
+  if(d.ok){
+    res.style.display='block';
+    res.style.color='var(--pg)';
+    res.innerHTML=`✅ License Created!<br><strong>Key: ${d.key}</strong><br>Expires: ${d.expiry_str}`;
+    toast('License created!');
+  } else {
+    res.style.display='block'; res.style.color='var(--ar)';
+    res.textContent='❌ '+(d.error||'Failed');
+  }
+}
+
+// ── Payments ─────────────────────────────────────────────────────────────────
+async function loadPayments(){
+  const r=await fetch('/admin/api/payments');
+  const data=await r.json();
+  const tb=document.getElementById('paymentsBody');
+  if(!data.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--tg)">No payments.</td></tr>';return;}
+  tb.innerHTML=data.map(p=>`<tr>
+    <td class="mono" style="font-size:10px">${esc(p.order_sn)}</td>
+    <td class="mono">${esc(p.chat_id)}</td><td>${esc(p.full_name)}</td>
+    <td>${esc(p.plan_label)}</td>
+    <td style="color:var(--pg)">${esc(p.amount_str)}</td>
+    <td>${p.is_paid?'<span class="badge bg-green">PAID</span>':'<span class="badge bg-or">PENDING</span>'}</td>
+    <td>${p.payment_url?`<a href="${esc(p.payment_url)}" target="_blank" style="color:var(--pg);font-size:11px">Open</a>`:'—'}</td>
+    <td style="font-size:11px;color:var(--tg)">${(p.created_at||'').slice(0,16)}</td>
+  </tr>`).join('');
+}
+
+// ── Withdrawals ───────────────────────────────────────────────────────────────
+async function loadWithdrawals(){
+  const r=await fetch('/admin/api/withdrawals');
+  const data=await r.json();
+  const tb=document.getElementById('withdrawalsBody');
+  if(!data.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--tg)">No withdrawals.</td></tr>';return;}
+  tb.innerHTML=data.map(w=>`<tr>
+    <td class="mono" style="font-size:10px">${esc(w._id)}</td>
+    <td class="mono">${esc(w.chat_id)}</td><td>${esc(w.full_name)}</td>
+    <td style="color:var(--pg)">${esc(w.amount_str)}</td>
+    <td style="font-size:11px">${esc(w.account)}</td>
+    <td>${w.status==='approved'?'<span class="badge bg-green">APPROVED</span>':w.status==='rejected'?'<span class="badge bg-red">REJECTED</span>':'<span class="badge bg-or">PENDING</span>'}</td>
+    <td style="font-size:11px;color:var(--tg)">${(w.created_at||'').slice(0,16)}</td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      ${w.status==='pending'?`
+        <button class="btn btn-primary btn-sm" onclick="updateWd('${esc(w._id)}','approved')">Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="updateWd('${esc(w._id)}','rejected')">Reject</button>
+      `:'<span style="color:var(--tg);font-size:11px">Done</span>'}
+    </td>
+  </tr>`).join('');
+}
+async function updateWd(id, status){
+  if(!confirm(`${status.toUpperCase()} withdrawal ${id}?`))return;
+  const r=await fetch(`/admin/api/withdrawals/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+  const d=await r.json();
+  if(d.ok){toast('Updated!');loadWithdrawals();}else toast('Error',false);
+}
+
+// ── Broadcast ─────────────────────────────────────────────────────────────────
+async function sendBroadcast(){
+  const fd=new FormData();
+  fd.append('text', document.getElementById('bc-text').value.trim());
+  fd.append('image_url', document.getElementById('bc-img-url').value.trim());
+  fd.append('btn_text', document.getElementById('bc-btn-text').value.trim());
+  fd.append('btn_url', document.getElementById('bc-btn-url').value.trim());
+  fd.append('target', document.getElementById('bc-target').value);
+  const imgFile=document.getElementById('bc-img-file').files[0];
+  if(imgFile) fd.append('image', imgFile, imgFile.name);
+
+  const status=document.getElementById('bc-status');
+  status.textContent='⏳ Sending…';
+  const r=await fetch('/admin/api/broadcast',{method:'POST',body:fd});
+  const d=await r.json();
+  if(d.ok) status.textContent=`✅ Sent to ${d.sent} users (${d.failed} failed)`;
+  else status.textContent='❌ '+(d.error||'Failed');
+}
+
+// ── Logs ─────────────────────────────────────────────────────────────────────
+async function loadLogs(){
+  const r=await fetch('/admin/api/logs');
+  const data=await r.json();
+  const tb=document.getElementById('logsBody');
+  if(!data.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--tg)">No logs.</td></tr>';return;}
+  tb.innerHTML=data.map(l=>`<tr>
+    <td style="font-size:11px;color:var(--tg)">${(l.time||'').slice(0,16)}</td>
+    <td class="mono" style="font-size:10px">${esc(l.chat_id)}</td>
+    <td>${esc(l.full_name)}</td>
+    <td style="font-size:11px;color:var(--tg)">${esc(l.ip)}</td>
+    <td><span class="badge bg-gray">${esc(l.device_type)}</span></td>
+    <td><span class="badge bg-blue">${esc(l.action)}</span></td>
+  </tr>`).join('');
+}
+
+// ── Daily Stats ───────────────────────────────────────────────────────────────
+async function loadDailyStats(){
+  const r=await fetch('/admin/api/daily_stats');
+  const data=await r.json();
+  const tb=document.getElementById('statsBody');
+  if(!data.length){tb.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--tg)">No stats yet.</td></tr>';return;}
+  tb.innerHTML=data.filter(s=>s&&s.date).map(s=>`<tr>
+    <td class="mono">${esc(s.date)}</td>
+    <td style="color:var(--pg)">${s.new_users||0}</td>
+    <td style="color:#3390ec">${s.returning_visits||0}</td>
+  </tr>`).join('');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+const settingsKeys=['bot_token','support_bot_token','bot_username','support_bot_username',
+  'channel_id','channel_invite','admin_chat_id','admin_username','admin_password',
+  'notify_chat_ids','site_url','panel_url','kimipay_app_id','kimipay_api_key',
+  'refer_commission','min_withdrawal','max_withdrawal',
+  'privacy_policy','terms_conditions','support_greeting','support_auto_reply'];
+
+async function loadSettings(){
+  const r=await fetch('/admin/api/settings');
+  const d=await r.json();
+  settingsKeys.forEach(k=>{
+    const el=document.getElementById('s-'+k);
+    if(el && d[k]!==undefined) el.value=d[k];
+  });
+}
+async function saveSettings(){
+  const data={};
+  settingsKeys.forEach(k=>{
+    const el=document.getElementById('s-'+k);
+    if(el) data[k]=el.value;
+  });
+  const r=await fetch('/admin/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const d=await r.json();
+  const st=document.getElementById('settings-status');
+  if(d.ok){st.textContent='✅ Saved!';st.style.color='var(--pg)';toast('Settings saved!');}
+  else{st.textContent='❌ Failed';st.style.color='var(--ar)';toast('Error',false);}
+}
+
+// ── Website Settings ──────────────────────────────────────────────────────────
+const wsKeys=['homeVersionBadge','homeTitleWord','homeTitleNum','homeSubtitle','appMainTitle','appMainSub',
+  'joinChannelUrl','contactUrl','serverStatus','predictionLimit','tickerText','maintenanceMessage'];
+
+async function loadWebsiteSettings(){
+  const r=await fetch('/admin/api/website_settings');
+  const d=await r.json();
+  wsKeys.forEach(k=>{
+    const el=document.getElementById('ws-'+k);
+    if(el) el.value=d[k]||'';
+  });
+  const mm=document.getElementById('ws-maintenanceMode');
+  if(mm) mm.checked=!!d.maintenanceMode;
+}
+async function saveWebsiteSettings(){
+  const data={};
+  wsKeys.forEach(k=>{
+    const el=document.getElementById('ws-'+k);
+    if(el) data[k]=el.value;
+  });
+  data.maintenanceMode=document.getElementById('ws-maintenanceMode').checked;
+  const r=await fetch('/admin/api/website_settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const d=await r.json();
+  const st=document.getElementById('ws-status');
+  if(d.ok){st.textContent='✅ Saved!';st.style.color='var(--pg)';toast('Website settings saved!');}
+  else{st.textContent='❌ Failed';st.style.color='var(--ar)';}
+}
+
+// ── Support badge ─────────────────────────────────────────────────────────────
+async function pollSupportBadge(){
+  try{
+    const r=await fetch('/support/unread_count');
+    const d=await r.json();
+    const b=document.getElementById('supportBadge');
+    if(b){b.textContent=d.count;b.style.display=d.count>0?'inline':'none';}
+  }catch(e){}
+}
+setInterval(pollSupportBadge, 15000);
+pollSupportBadge();
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadDashboard();
+</script>
+</body>
+</html>
