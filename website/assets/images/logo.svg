@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="bg" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#66ffaa"/>
+      <stop offset="60%" stop-color="#00cc33"/>
+      <stop offset="100%" stop-color="#006622"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <rect width="200" height="200" fill="#050807"/>
+  <polygon points="100,10 185,55 185,145 100,190 15,145 15,55"
+    fill="none" stroke="#00ff41" stroke-width="2" opacity="0.35"/>
+  <polygon points="100,25 170,62.5 170,137.5 100,175 30,137.5 30,62.5"
+    fill="none" stroke="#00ff41" stroke-width="1" opacity="0.2"/>
+  <circle cx="100" cy="100" r="60" fill="url(#bg)" filter="url(#glow)" opacity="0.92"/>
+  <text x="100" y="92" text-anchor="middle"
+    font-family="Arial Black,Helvetica,sans-serif"
+    font-size="26" font-weight="900" fill="#050807" letter-spacing="1">PRED</text>
+  <text x="100" y="122" text-anchor="middle"
+    font-family="Arial Black,Helvetica,sans-serif"
+    font-size="32" font-weight="900" fill="#050807">4.0</text>
+</svg>
