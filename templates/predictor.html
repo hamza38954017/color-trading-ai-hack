@@ -498,6 +498,23 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(5,8,7,.97);border:1px solid var(--bg);color:var(--tw);padding:11px 20px;font-size:13px;font-weight:600;z-index:9999;transition:transform .3s ease;white-space:nowrap;max-width:90vw}
 #toast.show{transform:translateX(-50%) translateY(0)}
 
+
+/* ═══ LOADING DIALOG ═══ */
+#loadingDialog{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);
+  display:none;align-items:center;justify-content:center;z-index:9990}
+#loadingDialog.active{display:flex}
+.loading-box{background:var(--db);border:2px solid rgba(0,255,65,.4);padding:36px 40px;
+  max-width:300px;width:90%;text-align:center;
+  box-shadow:0 0 60px rgba(0,255,65,.2),0 0 120px rgba(0,255,65,.08)}
+.loading-spinner{width:56px;height:56px;border:3px solid rgba(0,255,65,.15);
+  border-top-color:var(--pg);border-radius:50%;animation:spin360 .9s linear infinite;
+  margin:0 auto 18px}
+@keyframes spin360{to{transform:rotate(360deg)}}
+.loading-msg{font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:2px;color:var(--pg);text-transform:uppercase}
+.loading-sub{font-family:Rajdhani,sans-serif;font-size:13px;color:var(--tg);
+  margin-top:8px;letter-spacing:.5px}
+
 /* Maintenance screen */
 #maintenancePage{justify-content:center;padding:40px 20px;text-align:center}
 .maint-icon{font-size:80px;margin-bottom:20px;animation:logoFloat 2s ease-in-out infinite}
@@ -658,9 +675,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
         <img src="/website/assets/images/logo.png" alt="Logo" class="custom-logo">
         <div class="header-title-text">PREDICTOR <span class="header-v">4.0</span></div>
       </div>
-      <div class="app-header-right">
-        <div class="btn-username"><span>👤</span><span id="displayUsername">USER</span></div>
-      </div>
+      <div class="app-header-right"></div>
     </div>
 
     <!-- Ticker -->
@@ -670,10 +685,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
         <span class="ticker-text" id="tickerText2">Loading…</span>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:rgba(5,8,7,.8);border-bottom:1px solid rgba(0,255,65,.08)">
-      <span style="font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;color:var(--pg);display:flex;align-items:center;gap:6px"><span style="font-size:12px;opacity:.7">👤</span><span id="userFirstName">USER</span></span>
-      <button class="btn-logout" onclick="doLogout()">⏻ LOGOUT</button>
-    </div>
+
 
     <div class="app-inner">
       <!-- Title -->
@@ -791,12 +803,6 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
       </div>
 
       <!-- Result -->
-      <div class="last10-wrap">
-        <div class="last10-label">
-          <span>📊 LAST 10 RESULTS</span>
-        </div>
-        <div id="last10Container"><div style="text-align:center;color:var(--tg);font-size:12px;padding:10px">Loading…</div></div>
-      </div>
       <div class="result-card">
         <div class="result-card-label">SERVER RESULT</div>
         <div class="result-ball-wrap">
@@ -812,6 +818,14 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
       <!-- Buttons -->
       <button class="get-result-btn" id="getResultBtn" onclick="getResult()">GET RESULT</button>
       <button class="wait-btn" id="waitBtn" style="display:none">⏳ WAIT FOR NEXT ROUND</button>
+
+      <!-- Last 10 below buttons -->
+      <div class="last10-wrap" style="margin-top:16px">
+        <div class="last10-label">
+          <span>📊 LAST 10 RESULTS</span>
+        </div>
+        <div id="last10Container"><div style="text-align:center;color:var(--tg);font-size:12px;padding:10px">Loading…</div></div>
+      </div>
 
       <div style="height:30px"></div>
     </div>
@@ -1325,6 +1339,21 @@ function renderLast10(list){
   }).join('');
 }
 
+
+// ── Loading Dialog ────────────────────────────────────────────────────────────
+function showLoadingDialog(msg, sub){
+  const d   = document.getElementById('loadingDialog');
+  const m   = document.getElementById('loadingMsg');
+  const s   = document.getElementById('loadingSub');
+  if(d) d.classList.add('active');
+  if(m) m.textContent = msg || 'LOADING';
+  if(s) s.textContent = sub || 'Please wait…';
+}
+function hideLoadingDialog(){
+  const d = document.getElementById('loadingDialog');
+  if(d) d.classList.remove('active');
+}
+
 async function startWingoPolling(){
   stopTimer();
   clearInterval(wingoPollTimer);
@@ -1333,7 +1362,10 @@ async function startWingoPolling(){
   // Initial load
   const [cur, hist] = await Promise.all([fetchWingoData(), fetchWingoHistory()]);
   if(cur) applyWingoCurrentData(cur);
+  else hideLoadingDialog();  // hide even on error
   if(hist.length) renderLast10(hist);
+  // Fallback: hide loading after 8s no matter what
+  setTimeout(()=>hideLoadingDialog(), 8000);
 
   wingoPollTimer = setInterval(async ()=>{
     const [c, h] = await Promise.all([fetchWingoData(), fetchWingoHistory()]);
@@ -1356,6 +1388,8 @@ async function startWingoPolling(){
 function applyWingoCurrentData(d){
   const cur   = d.current;
   const issue = cur.issueNumber;
+  // Hide loading dialog as soon as we have a period ID
+  if(issue) hideLoadingDialog();
   const endMs = cur.endTime;
   const secs  = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
   const total = Math.round((d.intervalMinute||3) * 60);
@@ -1650,12 +1684,17 @@ function openHistory(){
 function startPrediction(){
   closeTarget();
   showPage('predictionPage');
+  // Scroll prediction page to very top
+  const ps = document.querySelector('#predictionPage .pred-scroll');
+  if(ps) ps.scrollTop = 0;
+  window.scrollTo(0,0);
   const isNums = currentMode==='numbers';
   document.getElementById('predModeIcon').textContent  = isNums ? '🔢' : '🎯';
   document.getElementById('predModeLabel').textContent = isNums ? 'NUMBERS' : 'BIG / SMALL';
   document.getElementById('predCycleLabel').textContent = currentCycle==='3min'?'3M':'5M';
   resetResultDisplay();
   clearAIPredictionUI();
+  showLoadingDialog('Connecting to game server…');
   startWingoPolling();
 }
 
@@ -1684,6 +1723,16 @@ function showError(msg){
   document.getElementById('errorPopup').classList.add('active');
 }
 </script>
+
+<!-- Loading Dialog -->
+<div id="loadingDialog">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-msg" id="loadingMsg">CONNECTING</div>
+    <div class="loading-sub" id="loadingSub">Fetching period data…</div>
+  </div>
+</div>
+
 <div id="toast"></div>
 </body>
 </html>
