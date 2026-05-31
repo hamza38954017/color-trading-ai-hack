@@ -945,12 +945,13 @@ const fbSet   = async (p,d) => fetch(`${FB_URL}/${p}.json`,{method:'PUT',  heade
 /* ═══════════════════════════════════════════════════════════
    GLOBAL STATE
 ═══════════════════════════════════════════════════════════ */
-let appSettings   = {};
+// Merge Flask-injected settings into appSettings
+var appSettings   = window._flaskSettings || {};
+var displayName   = DISPLAY_NAME || 'USER';
+var joinChannelUrl = window._flaskJoinUrl  || 'https://t.me/';
+var contactUrl     = window._flaskContact  || 'https://t.me/';
 let activeKey     = null;
-let displayName   = 'USER';
 let deviceFP      = '';
-let joinChannelUrl = 'https://t.me/';
-let contactUrl     = 'https://t.me/';
 
 /* Prediction state */
 let currentGame     = '55club';
