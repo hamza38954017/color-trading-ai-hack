@@ -402,6 +402,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 .result-card-label{font-family:Rajdhani,sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;color:var(--tg);margin-bottom:16px;text-transform:uppercase}
 .result-ball-wrap{position:relative;width:120px;height:120px;margin:0 auto 14px}
 .result-ball{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:all .5s ease}
+@keyframes ballGlowPulse{0%,100%{box-shadow:0 0 20px rgba(0,255,65,.4),0 0 40px rgba(0,255,65,.2),inset 0 0 20px rgba(0,255,65,.1)}50%{box-shadow:0 0 35px rgba(0,255,65,.7),0 0 60px rgba(0,255,65,.35),inset 0 0 30px rgba(0,255,65,.2)}}
 .ball-ready{background:radial-gradient(circle at 35% 35%,#d0d0d0,#808080 40%,#404040 80%);
   box-shadow:0 4px 20px rgba(0,0,0,.5),inset 0 -4px 10px rgba(0,0,0,.4),inset 0 4px 8px rgba(255,255,255,.3);
   border:2px solid rgba(255,255,255,.2)}
@@ -452,6 +453,15 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 .logout-toast.show{transform:translateX(-50%) translateY(0)}
 .logout-toast span{color:var(--pg);font-family:Rajdhani,sans-serif;font-weight:700;font-size:15px}
 
+
+
+.result-ball-wrap{position:relative}
+.result-ball-glow-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:140px;height:140px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,255,65,.25) 0%,rgba(0,255,65,.08) 50%,transparent 70%);
+  animation:ballGlowPulse 2s ease-in-out infinite;pointer-events:none;z-index:0}
+.result-ball{position:relative;z-index:1}
+.ball-ready{animation:ballGlowPulse 2s ease-in-out infinite}
 
 /* ═══ WINGO BALL IMAGES ═══ */
 @keyframes spin{0%{transform:scale(0) rotate(-180deg);opacity:0}100%{transform:scale(1) rotate(0deg);opacity:1}}
@@ -650,7 +660,6 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
       </div>
       <div class="app-header-right">
         <div class="btn-username"><span>👤</span><span id="displayUsername">USER</span></div>
-        <button class="btn-logout" onclick="doLogout()">LOGOUT</button>
       </div>
     </div>
 
@@ -660,6 +669,10 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
         <span class="ticker-text" id="tickerText1">Loading…</span>
         <span class="ticker-text" id="tickerText2">Loading…</span>
       </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:rgba(5,8,7,.8);border-bottom:1px solid rgba(0,255,65,.08)">
+      <span style="font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;color:var(--pg);display:flex;align-items:center;gap:6px"><span style="font-size:12px;opacity:.7">👤</span><span id="userFirstName">USER</span></span>
+      <button class="btn-logout" onclick="doLogout()">⏻ LOGOUT</button>
     </div>
 
     <div class="app-inner">
@@ -739,16 +752,18 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
         <div class="header-title-text">PREDICTOR <span class="header-v">4.0</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="hist-btn" onclick="openHistory()">📋 HISTORY</button>
         <button class="pred-back-btn" onclick="goToMain()">◀ BACK</button>
       </div>
     </div>
 
     <div class="pred-inner">
-      <div class="pred-mode-title">
-        <span id="predModeIcon">🔢</span>
-        <span id="predModeLabel">NUMBERS</span>
-        <span class="pred-mode-badge" id="predCycleLabel">1M</span>
+      <div class="pred-mode-title" style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="predModeIcon">🔢</span>
+          <span id="predModeLabel">NUMBERS</span>
+          <span class="pred-mode-badge" id="predCycleLabel">1M</span>
+        </div>
+        <button class="hist-btn" onclick="openHistory()" style="font-size:9px;padding:5px 10px">📋 HISTORY</button>
       </div>
 
       <!-- Timer -->
@@ -1059,7 +1074,10 @@ async function renderMain(){
   // Apply settings from window._S (always fresh)
   if(window._S) appSettings = window._S;
   const un = document.getElementById('displayUsername');
-  if(un) un.textContent = DISPLAY_NAME || displayName || 'USER';
+  const firstName = DISPLAY_NAME ? DISPLAY_NAME.split(' ')[0] : (displayName||'USER');
+  if(un) un.textContent = firstName;
+  const fnEl = document.getElementById('userFirstName');
+  if(fnEl) fnEl.textContent = firstName;
 
   /* Ticker */
   const tickerContent = appSettings.tickerText || 'OG Owner: @PredictorApp 💎 SECURE CONNECTION ESTABLISHED 🔒 ALL GAMES CONNECTED ⚡ DIRECT API SERVER 🚀 PREDICTOR 4.0';
@@ -1242,9 +1260,23 @@ function getWingoGame(){
   return currentCycle === '3min' ? 'WinGo_3M' : 'WinGo_5M';
 }
 
+// Direct browser fetch — request comes from user IP, bypasses CloudFlare
+const WINGO_HEADERS = {
+  'Accept':          'application/json, text/plain, */*',
+  'Accept-Language': 'en-GB',
+  'Origin':          'https://jaiclub00.com',
+  'Referer':         'https://jaiclub00.com/',
+};
+const WINGO_BASE = 'https://draw.ar-lottery01.com/WinGo';
+
 async function fetchWingoData(){
   try{
-    const r = await fetch(`/wingo_api?game=${getWingoGame()}&type=current&_=${Date.now()}`);
+    const ts = Date.now();
+    const r  = await fetch(`${WINGO_BASE}/${getWingoGame()}.json?ts=${ts}`, {
+      method: 'GET',
+      headers: WINGO_HEADERS,
+      cache:  'no-store',
+    });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
     if(d.error) throw new Error(d.error);
@@ -1254,7 +1286,12 @@ async function fetchWingoData(){
 
 async function fetchWingoHistory(){
   try{
-    const r = await fetch(`/wingo_api?game=${getWingoGame()}&type=history&_=${Date.now()}`);
+    const ts = Date.now();
+    const r  = await fetch(`${WINGO_BASE}/${getWingoGame()}/GetHistoryIssuePage.json?ts=${ts}`, {
+      method: 'GET',
+      headers: WINGO_HEADERS,
+      cache:  'no-store',
+    });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
     if(d.error) throw new Error(d.error);
@@ -1383,7 +1420,13 @@ function clearAIPredictionUI(){
   if(w){ w.style.display='none'; w.className='win-loss-container'; }
 }
 
+let _predInFlight = false;
 async function getResult(){
+  if(_predInFlight) return;
+  _predInFlight = true;
+  try{ await _getResultInner(); }finally{ _predInFlight = false; }
+}
+async function _getResultInner(){
   if(resultShown) return;
 
   // Check timer >= 30s
