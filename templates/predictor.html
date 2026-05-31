@@ -641,7 +641,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 <!-- ════════════════════════════════════════
      MAIN APP PAGE
 ════════════════════════════════════════ -->
-<div class="page" id="mainPage">
+<div class="page{% if chat_id %} active{% endif %}" id="mainPage">
   <div class="app-scroll">
     <div class="app-header">
       <div class="app-header-left">
@@ -910,16 +910,16 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 </div>
 
 <script>
-// ── Flask Template Variables ────────────────────────────────
+// ── Flask Template Variables (server-rendered) ──────────────
 const CHAT_ID      = '{{ chat_id }}';
 const DISPLAY_NAME = '{{ display_name }}';
 const EXPIRY_STR   = '{{ expiry_str }}';
 const SITE_SETTINGS= {{ site_settings|safe }};
 const CFG_DATA     = {{ cfg|safe }};
-let appSettings    = {...SITE_SETTINGS, ...CFG_DATA};
-let displayName    = DISPLAY_NAME || 'USER';
-let joinChannelUrl = appSettings.joinChannelUrl || 'https://t.me/';
-let contactUrl     = appSettings.contactUrl     || 'https://t.me/';
+// Merge into window so second script block can read after var hoisting
+window._S = Object.assign({}, SITE_SETTINGS, CFG_DATA);
+window._S.joinChannelUrl = window._S.joinChannelUrl || window._S.channel_invite || 'https://t.me/';
+window._S.contactUrl     = window._S.contactUrl     || 'https://t.me/';
 function doLogout(){
   const t=document.getElementById('logoutToast');
   if(t){t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
@@ -945,11 +945,11 @@ const fbSet   = async (p,d) => fetch(`${FB_URL}/${p}.json`,{method:'PUT',  heade
 /* ═══════════════════════════════════════════════════════════
    GLOBAL STATE
 ═══════════════════════════════════════════════════════════ */
-// Merge Flask-injected settings into appSettings
-var appSettings   = window._flaskSettings || {};
+// Read Flask-injected settings (set by first script block)
+var appSettings   = window._S || {};
 var displayName   = DISPLAY_NAME || 'USER';
-var joinChannelUrl = window._flaskJoinUrl  || 'https://t.me/';
-var contactUrl     = window._flaskContact  || 'https://t.me/';
+var joinChannelUrl = (window._S && window._S.joinChannelUrl) || 'https://t.me/';
+var contactUrl     = (window._S && window._S.contactUrl)     || 'https://t.me/';
 let activeKey     = null;
 let deviceFP      = '';
 
@@ -1006,20 +1006,26 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }catch(e){}
 
   // Go directly to main app (already authenticated by Flask)
-  if(CHAT_ID){
-    showPage('mainPage');
-    renderMain();
+  if(CHAT_ID && CHAT_ID.length > 0){
+    // mainPage already has `active` class from server — just init content
+    try{ renderMain(); }catch(e){ console.error('[renderMain]', e); }
   } else {
+    // Fallback: no chatid means direct browser access
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     showPage('homePage');
     formatKeyInput();
   }
 });
 
 function applyFlaskSettings(){
-  // Merge Flask-injected settings (highest priority) with defaults
+  // Read from window._S which was set before this script block loaded
+  if(window._S) appSettings = window._S;
   const s = appSettings;
   joinChannelUrl = s.joinChannelUrl || s.channel_invite || 'https://t.me/';
   contactUrl     = s.contactUrl || 'https://t.me/';
+  // Set username immediately (visible in header)
+  const unEl = document.getElementById('displayUsername');
+  if(unEl) unEl.textContent = DISPLAY_NAME || 'USER';
   if(s.homeVersionBadge){ const el=document.getElementById('homeVersionBadge'); if(el) el.textContent=s.homeVersionBadge; }
   if(s.homeTitleWord){    const el=document.getElementById('homeTitleWord');    if(el) el.textContent=s.homeTitleWord; }
   if(s.homeTitleNum){     const el=document.getElementById('homeTitleNum');     if(el) el.textContent=s.homeTitleNum; }
@@ -1049,8 +1055,11 @@ function loadGameImages(){
 }
 
 async function renderMain(){
-  loadGameImages();
-  document.getElementById('displayUsername').textContent = DISPLAY_NAME || displayName || 'USER';
+  try{ loadGameImages(); }catch(e){}
+  // Apply settings from window._S (always fresh)
+  if(window._S) appSettings = window._S;
+  const un = document.getElementById('displayUsername');
+  if(un) un.textContent = DISPLAY_NAME || displayName || 'USER';
 
   /* Ticker */
   const tickerContent = appSettings.tickerText || 'OG Owner: @PredictorApp 💎 SECURE CONNECTION ESTABLISHED 🔒 ALL GAMES CONNECTED ⚡ DIRECT API SERVER 🚀 PREDICTOR 4.0';
