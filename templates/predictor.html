@@ -1725,10 +1725,14 @@ function openHistory(){
 function startPrediction(){
   closeTarget();
   showPage('predictionPage');
-  // Scroll prediction page to very top
-  const ps = document.querySelector('#predictionPage .pred-scroll');
-  if(ps) ps.scrollTop = 0;
-  window.scrollTo(0,0);
+  // Scroll to top AFTER paint (requestAnimationFrame ensures DOM is visible first)
+  requestAnimationFrame(()=>{
+    const ps = document.querySelector('#predictionPage .pred-scroll');
+    if(ps){ ps.scrollTop = 0; ps.scrollIntoView({block:'start'}); }
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.scrollTo({top:0, behavior:'instant'});
+  });
   const isNums = currentMode==='numbers';
   document.getElementById('predModeIcon').textContent  = isNums ? '🔢' : '🎯';
   document.getElementById('predModeLabel').textContent = isNums ? 'NUMBERS' : 'BIG / SMALL';
