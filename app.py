@@ -57,7 +57,7 @@ HF_MODEL="mistralai/Mistral-7B-Instruct-v0.3"
 def get_hf_key():
     """Get next HuggingFace API key using round-robin."""
     global _rr_idx
-    keys_raw=fb.cfg("hf_api_keys","")
+    keys_raw=fb.cfg("gemini_api_keys","")
     if not keys_raw: return None
     keys=[k.strip() for k in str(keys_raw).split(",") if k.strip()]
     if not keys: return None
@@ -496,7 +496,7 @@ def api_ai_stats():
 def api_settings():
     if request.method=="GET": return jsonify(fb.get_config())
     data=request.get_json(silent=True) or {}
-    allowed={"bot_token","support_bot_token","bot_username","support_bot_username","channel_id","channel_invite","admin_chat_id","admin_username","admin_password","notify_chat_ids","support_notify_chat_ids","site_url","panel_url","kimipay_app_id","kimipay_api_key","kimipay_base_url","refer_commission","min_withdrawal","max_withdrawal","privacy_policy","terms_conditions","support_greeting","support_auto_reply","hf_api_keys","game_55club_image","wingo_game_image","maintenanceMode","maintenanceMessage","tickerText","protocols","homeVersionBadge","homeTitleWord","homeTitleNum","homeSubtitle","appMainTitle","appMainSub","joinChannelUrl","contactUrl","serverStatus","predictionLimit"}
+    allowed={"bot_token","support_bot_token","bot_username","support_bot_username","channel_id","channel_invite","admin_chat_id","admin_username","admin_password","notify_chat_ids","support_notify_chat_ids","site_url","panel_url","kimipay_app_id","kimipay_api_key","kimipay_base_url","refer_commission","min_withdrawal","max_withdrawal","privacy_policy","terms_conditions","support_greeting","support_auto_reply","gemini_api_keys","game_55club_image","wingo_game_image","maintenanceMode","maintenanceMessage","tickerText","protocols","homeVersionBadge","homeTitleWord","homeTitleNum","homeSubtitle","appMainTitle","appMainSub","joinChannelUrl","contactUrl","serverStatus","predictionLimit"}
     for k,v in data.items():
         if k in allowed: fb.put(f"config/{k}",v)
     return jsonify({"ok":True})
