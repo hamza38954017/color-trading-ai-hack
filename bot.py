@@ -294,9 +294,12 @@ def msg_license(msg):
             f"⏰ Valid Until: *{lic.get('expiry_str', '?')}*",
             reply_markup=kb_main())
         mk = types.InlineKeyboardMarkup()
-        mk.add(types.InlineKeyboardButton("🚀 Open Predictor App", url=url))
+        mk.add(types.InlineKeyboardButton(
+            "🚀 Open Predictor App",
+            web_app=types.WebAppInfo(url=url)
+        ))
         bot.send_message(msg.chat.id,
-            "👇 Tap below to open the app _(link valid for 10 minutes)_:",
+            "👇 Tap below to open the app _(opens as mini-app)_:",
             parse_mode="Markdown", reply_markup=mk)
     else:
         _show_license_plans(cid)
@@ -465,9 +468,22 @@ def _deliver_license(cid: str, order_sn: str):
         f"✅ *License Key Activated!*\n━━━━━━━━━━━━━━━━━━━━━\n"
         f"🗝️ Key: `{key}`\n📦 Plan: *{plan['label']}*\n"
         f"💰 Amount: *₹{amount:,}*\n⏰ Valid Until: *{expiry_str}*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🚀 Tap *License Key* in the menu to open the app!",
+        f"━━━━━━━━━━━━━━━━━━━━━",
         reply_markup=kb_main())
+    # Send open-app button as Mini App
+    try:
+        token_new = security.generate_site_token(chat_id)
+        app_url   = f"{SITE_URL()}/app?chatid={chat_id}&t={token_new}"
+        open_mk   = types.InlineKeyboardMarkup()
+        open_mk.add(types.InlineKeyboardButton(
+            "🚀 Open Predictor App",
+            web_app=types.WebAppInfo(url=app_url)
+        ))
+        bot.send_message(chat_id,
+            "👇 Tap below to open the app:",
+            reply_markup=open_mk)
+    except Exception as e:
+        print(f"[DELIVER] web_app btn error: {e}")
 
     # Notify admin with full details
     send_notify(
