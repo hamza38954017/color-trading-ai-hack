@@ -471,18 +471,29 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 .tag.big{background:rgba(255,85,0,.15);color:#ff5500;border:1px solid rgba(255,85,0,.4)}
 .tag.small{background:rgba(34,102,255,.15);color:#2266ff;border:1px solid rgba(34,102,255,.4)}
 /* ═══ LAST 10 CONTAINER ═══ */
-.last10-wrap{background:rgba(0,255,65,.03);border:1px solid var(--bg);padding:14px;margin-bottom:14px}
-.last10-label{font-family:Rajdhani,sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--tg);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+/* ═══ LAST 10 TABLE ═══ */
+.last10-wrap{background:rgba(10,8,30,.85);border:1px solid rgba(80,60,140,.5);border-radius:12px;overflow:hidden;margin-bottom:14px}
+.last10-label{font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--tw);padding:12px 16px 0;text-transform:uppercase}
+.hist-table{width:100%;border-collapse:collapse}
+.hist-table thead tr{border-bottom:1px solid rgba(255,255,255,.1)}
+.hist-table th{padding:10px 8px;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:var(--tw);text-align:center;letter-spacing:.5px}
+.hist-table th:first-child{text-align:left;padding-left:14px}
+.hist-table td{padding:11px 8px;border-bottom:1px solid rgba(255,255,255,.05);font-family:Rajdhani,sans-serif;font-size:13px;text-align:center;color:rgba(255,255,255,.85)}
+.hist-table td:first-child{text-align:left;padding-left:14px;font-size:12px;color:rgba(255,255,255,.6);letter-spacing:.3px}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-num{font-family:Rajdhani,sans-serif;font-size:28px;font-weight:700;line-height:1}
+.hist-num.red{color:#ff4d4d}.hist-num.green{color:#00e676}.hist-num.purple{color:#e040fb}
+.hist-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin:0 2px}
+.hist-dot.green{background:#00e676}.hist-dot.red{background:#ff4d4d}.hist-dot.violet{background:#e040fb}
 .hist-btn{background:rgba(0,255,65,.08);border:1px solid var(--bg);color:var(--pg);padding:4px 10px;font-size:10px;font-family:Orbitron,sans-serif;font-weight:700;cursor:pointer;letter-spacing:1px;transition:.15s}
 .hist-btn:hover{background:rgba(0,255,65,.2);border-color:var(--pg)}
-#last10Container{display:flex;gap:6px;flex-wrap:wrap}
+/* keep old fallback classes */
+.col-red{background:#ff4d4d}.col-green{background:#00e676}
+.col-red-violet{background:linear-gradient(135deg,#ff4d4d,#e040fb)}
+.col-green-violet{background:linear-gradient(135deg,#00e676,#e040fb)}
 .hist-row-item{display:flex;flex-direction:column;align-items:center;gap:4px}
 .hist-ball-img{width:36px;height:36px;object-fit:contain}
-.hist-ball-fallback{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Orbitron,sans-serif;font-size:14px;font-weight:900;color:#fff}
-.col-red{background:radial-gradient(circle at 35% 35%,#ff9966,#ff3300 70%)}
-.col-green{background:radial-gradient(circle at 35% 35%,#66ff99,#00aa33 70%)}
-.col-red-violet{background:radial-gradient(circle at 35% 35%,#dd66ff,#aa00cc 40%,#ff3300 80%)}
-.col-green-violet{background:radial-gradient(circle at 35% 35%,#dd66ff,#aa00cc 40%,#00aa33 80%)}
+.hist-ball-fallback{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff}
 .hist-bs{font-size:9px;padding:1px 5px}
 /* ═══ WIN / LOSS ═══ */
 .win-loss-container{border:2px solid;padding:16px;margin-bottom:14px;text-align:center;animation:fadeInUp .4s ease}
@@ -821,10 +832,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 
       <!-- Last 10 below buttons -->
       <div class="last10-wrap" style="margin-top:16px">
-        <div class="last10-label">
-          <span>📊 LAST 10 RESULTS</span>
-        </div>
-        <div id="last10Container"><div style="text-align:center;color:var(--tg);font-size:12px;padding:10px">Loading…</div></div>
+        <div id="last10Container" style="padding:4px 0"><div style="text-align:center;color:var(--tg);font-size:12px;padding:20px">Loading results…</div></div>
       </div>
 
       <div style="height:30px"></div>
@@ -1322,21 +1330,56 @@ function wingoColorClass(colorStr){
   return 'col-red';
 }
 
+function numColorClass(n){
+  // 0,5 = purple/violet; 1,3,7,9 = green; 2,4,6,8 = red
+  if(n===0||n===5) return 'purple';
+  if(n%2===1) return 'green';
+  return 'red';
+}
+
+function renderColorDots(colorStr){
+  const c=(colorStr||'').toLowerCase().replace(/\s/g,'');
+  if(c==='red,violet'||c==='violet,red')
+    return '<span class="hist-dot red"></span><span class="hist-dot violet"></span>';
+  if(c==='green,violet'||c==='violet,green')
+    return '<span class="hist-dot green"></span><span class="hist-dot violet"></span>';
+  if(c.includes('green')) return '<span class="hist-dot green"></span>';
+  if(c.includes('red'))   return '<span class="hist-dot red"></span>';
+  if(c.includes('violet')||c.includes('purple')) return '<span class="hist-dot violet"></span>';
+  return '<span class="hist-dot red"></span>';
+}
+
 function renderLast10(list){
   wingoHistList = list;
   const container = document.getElementById('last10Container');
   if(!container) return;
-  if(!list || !list.length){ container.innerHTML='<div style="text-align:center;color:var(--tg);font-size:12px;padding:20px">Loading results…</div>'; return; }
-  container.innerHTML = list.map(item=>{
-    const num = parseInt(item.number)||0;
-    const bs  = num>=5?'Big':'Small';
-    const cc  = wingoColorClass(item.color);
-    return `<div class="hist-row-item">
-      <img src="/website/assets/wingo/ball_${num}.webp" alt="${num}" class="hist-ball-img" onerror="this.style.display='none';this.nextSibling.style.display='flex'">
-      <div class="hist-ball-fallback nb ${cc}" style="display:none">${num}</div>
-      <span class="hist-bs tag ${bs==='Big'?'big':'small'}">${bs}</span>
-    </div>`;
+  if(!list || !list.length){
+    container.innerHTML='<div style="text-align:center;color:var(--tg);font-size:12px;padding:20px">Loading results…</div>';
+    return;
+  }
+  const rows = list.map(item=>{
+    const num  = parseInt(item.number)||0;
+    const bs   = num>=5?'Big':'Small';
+    const cc   = numColorClass(num);
+    const dots = renderColorDots(item.color||'');
+    const period = item.issueNumber||item.period||'—';
+    return `<tr>
+      <td>${period}</td>
+      <td><span class="hist-num ${cc}">${num}</span></td>
+      <td style="color:rgba(255,255,255,.8)">${bs}</td>
+      <td>${dots}</td>
+    </tr>`;
   }).join('');
+
+  container.innerHTML = `<table class="hist-table">
+    <thead><tr>
+      <th>Period</th>
+      <th>Number</th>
+      <th>Big Small</th>
+      <th>Color</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
 
 
@@ -1564,13 +1607,11 @@ function showAIPredictionCard(pred, num, bs){
           </div>
         </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-        ${[0,1,2,3,4,5,6,7,8,9].map(n=>`
-          <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;position:relative">
-            <img src="/website/assets/wingo/ball_${n}.webp" alt="${n}"
-              style="width:${n===num?36:28}px;height:${n===num?36:28}px;object-fit:contain;opacity:${n===num?1:0.35};${n===num?'filter:drop-shadow(0 0 8px var(--gg));':''}"
-              onerror="this.style.display='none'">
-          </div>`).join('')}
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+        ${[0,1,2,3,4,5,6,7,8,9].map(n=>{
+          const cc=n===0||n===5?'#e040fb':n%2===1?'#00e676':'#ff4d4d';
+          return `<div style="width:32px;height:32px;border-radius:50%;background:${n===num?cc+'33':'rgba(255,255,255,.06)'};border:2px solid ${n===num?cc:'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-family:Rajdhani,sans-serif;font-size:15px;font-weight:700;color:${n===num?cc:'rgba(255,255,255,.3)'};transition:.2s">${n}</div>`;
+        }).join('')}
       </div>
       <div style="font-size:11px;color:var(--tg);letter-spacing:.3px;padding-top:6px;border-top:1px solid rgba(0,255,65,.1)">
         💡 ${pred.reasoning||'Based on recent pattern analysis'}
