@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Predictor 4.0</title>
+<title>Predictor</title>
 
 <!-- Orbitron + Rajdhani from gstatic (no tracking) -->
 <style>
@@ -566,7 +566,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 <div class="page" id="maintenancePage">
   <div class="maint-icon">🔧</div>
   <div class="maint-title">UNDER MAINTENANCE</div>
-  <div class="maint-sub" id="maintMsg">PREDICTOR 4.0 is temporarily offline.<br>Please check back shortly.</div>
+  <div class="maint-sub" id="maintMsg">Predictor is temporarily offline.<br>Please check back shortly.</div>
 </div>
 
 <!-- ════════════════════════════════════════
@@ -593,8 +593,8 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
         <span class="badge-icon">◆</span>
       </div>
       <h1 class="main-title">
-        <span class="title-word" id="homeTitleWord">PREDICTOR</span>
-        <span class="title-number" id="homeTitleNum">4.0</span>
+        <span class="title-word" id="homeTitleWord">Predictor</span>
+        <span class="title-number" id="homeTitleNum" style="display:none"></span>
       </h1>
       <div class="subtitle-container">
         <div class="subtitle-line"></div>
@@ -622,7 +622,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
       </button>
     </div>
   </div>
-  <div class="version-watermark">PREDICTOR v4.0.0</div>
+  <div class="version-watermark">Predictor</div>
 </div>
 
 <!-- ════════════════════════════════════════
@@ -684,7 +684,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
     <div class="app-header">
       <div class="app-header-left">
         <img src="/website/assets/images/logo.png" alt="Logo" class="custom-logo">
-        <div class="header-title-text">PREDICTOR <span class="header-v">4.0</span></div>
+        <div class="header-title-text">Predictor</div>
       </div>
       <div class="app-header-right"></div>
     </div>
@@ -772,7 +772,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
     <div class="pred-header">
       <div class="pred-header-left">
         <img src="/website/assets/images/logo.png" alt="Logo" class="custom-logo">
-        <div class="header-title-text">PREDICTOR <span class="header-v">4.0</span></div>
+        <div class="header-title-text">Predictor</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="pred-back-btn" onclick="goToMain()">◀ BACK</button>
@@ -1032,7 +1032,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   if(appSettings.maintenanceMode){
     showPage('maintenancePage');
     const mm = document.getElementById('maintMsg');
-    if(mm) mm.innerHTML = appSettings.maintenanceMessage || 'PREDICTOR 4.0 is temporarily offline.';
+    if(mm) mm.innerHTML = appSettings.maintenanceMessage || 'Predictor is temporarily offline.';
     return;
   }
 
@@ -1065,7 +1065,7 @@ function applyFlaskSettings(){
   if(unEl) unEl.textContent = DISPLAY_NAME || 'USER';
   if(s.homeVersionBadge){ const el=document.getElementById('homeVersionBadge'); if(el) el.textContent=s.homeVersionBadge; }
   if(s.homeTitleWord){    const el=document.getElementById('homeTitleWord');    if(el) el.textContent=s.homeTitleWord; }
-  if(s.homeTitleNum){     const el=document.getElementById('homeTitleNum');     if(el) el.textContent=s.homeTitleNum; }
+  if(s.homeTitleNum && s.homeTitleNum.trim()){ const el=document.getElementById('homeTitleNum'); if(el){ el.textContent=s.homeTitleNum; el.style.display=''; } }
   if(s.homeSubtitle){     const el=document.getElementById('homeSubtitle');     if(el) el.textContent=s.homeSubtitle; }
   if(s.appMainTitle){     const el=document.getElementById('appMainTitle');     if(el) el.innerHTML=s.appMainTitle; }
   if(s.appMainSub){       const el=document.getElementById('appMainSub');       if(el) el.textContent=s.appMainSub; }
@@ -1102,7 +1102,7 @@ async function renderMain(){
   if(fnEl) fnEl.textContent = firstName;
 
   /* Ticker */
-  const tickerContent = appSettings.tickerText || 'OG Owner: @PredictorApp 💎 SECURE CONNECTION ESTABLISHED 🔒 ALL GAMES CONNECTED ⚡ DIRECT API SERVER 🚀 PREDICTOR 4.0';
+  const tickerContent = appSettings.tickerText || 'OG Owner: @PredictorApp 💎 SECURE CONNECTION ESTABLISHED 🔒 ALL GAMES CONNECTED ⚡ DIRECT API SERVER 🚀 Predictor';
   ['tickerText1','tickerText2'].forEach(id=>{
     document.getElementById(id).textContent = tickerContent;
   });
