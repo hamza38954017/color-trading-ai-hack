@@ -6,6 +6,7 @@ from flask import (Flask, request, jsonify, render_template, session,
                    redirect, url_for, send_from_directory, abort, make_response)
 from functools import wraps
 import datetime, threading, os, time, json, secrets, hashlib
+import requests
 import firebase_helper as fb
 import kimipay as kp
 import security
