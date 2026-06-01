@@ -50,14 +50,12 @@ def rate_limit(max_calls,period_secs):
         return wrapper
     return decorator
 
-# ── HuggingFace AI Round-Robin ─────────────────────────────────────────────────
+# ── Gemini AI Round-Robin ──────────────────────────────────────────────────────
 _rr_idx=0; _rr_lock=threading.Lock()
-HF_MODEL="mistralai/Mistral-7B-Instruct-v0.3"
-
-def get_hf_key():
-    """Get next HuggingFace API key using round-robin."""
+def get_deepseek_key():
+    """Get next DeepSeek API key using round-robin."""
     global _rr_idx
-    keys_raw=fb.cfg("gemini_api_keys","")
+    keys_raw=fb.cfg("deepseek_api_keys","")
     if not keys_raw: return None
     keys=[k.strip() for k in str(keys_raw).split(",") if k.strip()]
     if not keys: return None
@@ -66,66 +64,69 @@ def get_hf_key():
     return keys[idx]
 
 def ai_predict(last_10,mode):
-    """Call HuggingFace Inference API (round-robin keys, Mistral-7B-Instruct)."""
-    key=get_hf_key()
+    """Call DeepSeek-R1 via HuggingFace router (round-robin keys, OpenAI-compatible)."""
+    key=get_deepseek_key()
     if not key: return {"error":"no_key","number":None,"big_small":None}
-
-    url=f"https://api-inference.huggingface.co/models/{HF_MODEL}"
-    headers={"Content-Type":"application/json","Authorization":f"Bearer {key}"}
 
     system_prompt=(
         "You are an expert AI predictor for the WinGo lottery game. "
         "Analyze the last 10 results and predict the MOST PROBABLE next number (0-9). "
         "Rules: Big = number >= 5, Small = number < 5. "
-        "Return ONLY valid JSON with NO markdown, NO extra text, NO explanation outside JSON: "
+        "Return ONLY valid JSON with NO markdown, NO extra text, NO <think> tags: "
         '{"number":<integer 0-9>,"big_small":"<Big or Small>","confidence":<integer 1-100>,"reasoning":"<one sentence>"}'
     )
     user_text=(
         f"Last 10 WinGo results (index 0 = most recent):\n{json.dumps(last_10)}\n\n"
         "Each result: number(0-9), big_small(Big>=5/Small<5), color.\n"
-        "Predict the next number."
+        "Predict the next number. Reply ONLY with JSON."
     )
-    prompt=f"<s>[INST] {system_prompt}\n\n{user_text} [/INST]"
-    payload={
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 120,
-            "temperature": 0.3,
-            "return_full_text": False,
-            "do_sample": True
-        }
-    }
-    try:
-        r=requests.post(url,headers=headers,json=payload,timeout=30)
-        if r.status_code!=200:
-            print(f"[HUGGINGFACE] HTTP {r.status_code}: {r.text[:200]}")
-            return {"error":f"HTTP {r.status_code}","number":None,"big_small":None}
-        resp=r.json()
-        # HF returns [{"generated_text": "..."}]
-        if isinstance(resp,list) and resp:
-            text=resp[0].get("generated_text","").strip()
-        else:
-            print(f"[HUGGINGFACE] Unexpected response: {str(resp)[:200]}")
-            return {"error":"unexpected_response","number":None,"big_small":None}
-        # Strip markdown fences if present
-        if text.startswith("```"):
-            text=text.split("```")[1]
-            if text.startswith("json"): text=text[4:]
-        # Extract JSON object if there's surrounding text
-        start=text.find("{"); end=text.rfind("}")+1
-        if start!=-1 and end>start: text=text[start:end]
-        data=json.loads(text.strip())
-        num=max(0,min(9,int(data.get("number",0))))
-        return {
-            "number":num,
-            "big_small":"Big" if num>=5 else "Small",
-            "confidence":int(data.get("confidence",70)),
-            "reasoning":str(data.get("reasoning",""))[:200],
-            "error":None
-        }
-    except Exception as e:
-        print(f"[HUGGINGFACE] {e}")
-        return {"error":str(e),"number":None,"big_small":None}
+
+    import re as _re
+    num_keys=len([key]) # single key this call, failover tries others
+    all_keys=[key]
+    # Also try other keys if available
+    keys_raw=fb.cfg("deepseek_api_keys","")
+    if keys_raw:
+        all_keys=[k.strip() for k in str(keys_raw).split(",") if k.strip()]
+
+    for k in all_keys:
+        for attempt in range(2):  # 2 attempts per key
+            try:
+                from openai import OpenAI as _OAI
+                client=_OAI(base_url="https://router.huggingface.co/v1",api_key=k)
+                completion=client.chat.completions.create(
+                    model="deepseek-ai/DeepSeek-R1:novita",
+                    messages=[
+                        {"role":"system","content":system_prompt},
+                        {"role":"user","content":user_text}
+                    ],
+                    max_tokens=200,
+                    temperature=0.3,
+                )
+                raw=completion.choices[0].message.content or ""
+                # Strip <think>...</think> blocks (DeepSeek-R1 chain-of-thought)
+                text=_re.sub(r"<think>.*?</think>","",raw,flags=_re.DOTALL).strip()
+                # Strip markdown fences
+                if text.startswith("```"):
+                    text=text.split("```")[1]
+                    if text.startswith("json"): text=text[4:]
+                text=text.strip()
+                # Extract JSON even if surrounded by text
+                m=_re.search(r"\{.*\}",text,_re.DOTALL)
+                if m: text=m.group(0)
+                data=json.loads(text)
+                num=max(0,min(9,int(data.get("number",0))))
+                return {
+                    "number":num,
+                    "big_small":"Big" if num>=5 else "Small",
+                    "confidence":int(data.get("confidence",70)),
+                    "reasoning":str(data.get("reasoning",""))[:200],
+                    "error":None
+                }
+            except Exception as e:
+                print(f"[HF-DEEPSEEK] key_idx attempt {attempt}: {e}")
+                if attempt==0: time.sleep(1)
+    return {"error":"All API keys failed","number":None,"big_small":None}
 
 # ── WinGo Proxy ────────────────────────────────────────────────────────────────
 @app.route("/wingo_api")
@@ -496,7 +497,7 @@ def api_ai_stats():
 def api_settings():
     if request.method=="GET": return jsonify(fb.get_config())
     data=request.get_json(silent=True) or {}
-    allowed={"bot_token","support_bot_token","bot_username","support_bot_username","channel_id","channel_invite","admin_chat_id","admin_username","admin_password","notify_chat_ids","support_notify_chat_ids","site_url","panel_url","kimipay_app_id","kimipay_api_key","kimipay_base_url","refer_commission","min_withdrawal","max_withdrawal","privacy_policy","terms_conditions","support_greeting","support_auto_reply","gemini_api_keys","game_55club_image","wingo_game_image","maintenanceMode","maintenanceMessage","tickerText","protocols","homeVersionBadge","homeTitleWord","homeTitleNum","homeSubtitle","appMainTitle","appMainSub","joinChannelUrl","contactUrl","serverStatus","predictionLimit"}
+    allowed={"bot_token","support_bot_token","bot_username","support_bot_username","channel_id","channel_invite","admin_chat_id","admin_username","admin_password","notify_chat_ids","support_notify_chat_ids","site_url","panel_url","kimipay_app_id","kimipay_api_key","kimipay_base_url","refer_commission","min_withdrawal","max_withdrawal","privacy_policy","terms_conditions","support_greeting","support_auto_reply","deepseek_api_keys","game_55club_image","wingo_game_image","maintenanceMode","maintenanceMessage","tickerText","protocols","homeVersionBadge","homeTitleWord","homeTitleNum","homeSubtitle","appMainTitle","appMainSub","joinChannelUrl","contactUrl","serverStatus","predictionLimit"}
     for k,v in data.items():
         if k in allowed: fb.put(f"config/{k}",v)
     return jsonify({"ok":True})
