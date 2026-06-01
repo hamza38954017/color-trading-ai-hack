@@ -64,17 +64,30 @@ def get_gemini_key():
 def ai_predict(last_10,mode):
     key=get_gemini_key()
     if not key: return {"error":"no_key","number":None,"big_small":None}
+    url=f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+    system_prompt=(
+        "You are an AI predictor for WinGo lottery game. "
+        "Analyze patterns in the last 10 results and predict the most probable next number (0-9). "
+        "Return ONLY valid JSON, no markdown, no explanation outside JSON: "
+        '{"number":<integer 0-9>,"big_small":"<Big or Small>","confidence":<integer 1-100>,"reasoning":"<one line>"}'
+    )
+    user_text=(
+        f"Last 10 WinGo results (most recent first):\n{json.dumps(last_10)}\n\n"
+        "Each result has: number(0-9), big_small(Big if >=5, Small if <5), color.\n"
+        "Based on this pattern predict the MOST PROBABLE next result number."
+    )
+    payload={
+        "system_instruction":{"parts":[{"text":system_prompt}]},
+        "contents":[{"parts":[{"text":user_text}]}],
+        "generationConfig":{"temperature":0.3,"maxOutputTokens":128}
+    }
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=key)
-        model=genai.GenerativeModel("gemini-2.0-flash")
-        prompt=f"""Analyze WinGo lottery last 10 results (most recent first):
-{json.dumps(last_10)}
-Each result: number(0-9), big_small(Big>=5/Small<5), color.
-Predict most probable next number. Return ONLY valid JSON, no markdown:
-{{"number":<0-9>,"big_small":"<Big or Small>","confidence":<1-100>,"reasoning":"<one line>"}}"""
-        resp=model.generate_content(prompt)
-        text=resp.text.strip()
+        r=requests.post(url,json=payload,timeout=20)
+        if r.status_code!=200:
+            print(f"[GEMINI] HTTP {r.status_code}: {r.text[:200]}")
+            return {"error":f"HTTP {r.status_code}","number":None,"big_small":None}
+        resp=r.json()
+        text=resp["candidates"][0]["content"]["parts"][0]["text"].strip()
         if text.startswith("```"): text=text.split("```")[1]; text=text[4:] if text.startswith("json") else text
         data=json.loads(text.strip())
         num=max(0,min(9,int(data.get("number",0))))
