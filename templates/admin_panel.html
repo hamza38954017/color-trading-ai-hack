@@ -438,9 +438,9 @@ tr:hover td{background:rgba(0,255,65,.02)}
         <div class="f-row"><label>Referral Commission (%)</label><input type="number" id="s-refer_commission" placeholder="10" min="0" max="100"></div>
         <div class="f-row"><label>Min Withdrawal (₹)</label><input type="number" id="s-min_withdrawal" placeholder="100"></div>
         <div class="f-row"><label>Max Withdrawal (₹)</label><input type="number" id="s-max_withdrawal" placeholder="50000"></div>
-        <div class="f-row" style="grid-column:1/-1"><label>HuggingFace API Keys — DeepSeek-R1 (comma-separated, round-robin)</label>
-          <textarea id="s-deepseek_api_keys" rows="2" placeholder="hf_xxxxxxxxxx,hf_yyyyyyyyyy"></textarea>
-          <div class="f-hint">Get free keys at <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--pg)">huggingface.co/settings/tokens</a> · Uses deepseek-ai/DeepSeek-R1:novita</div></div>
+        <div class="f-row" style="grid-column:1/-1"><label>Gemini API Keys (comma-separated, round-robin)</label>
+          <textarea id="s-gemini_api_keys" rows="2" placeholder="AIzaSy...,AIzaSy..."></textarea>
+          <div class="f-hint">Get free keys at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--pg)">aistudio.google.com</a> · Model: gemini-2.0-flash-exp</div></div>
         <div class="f-row"><label>55 Club Banner Image URL (optional)</label>
           <input type="url" id="s-game_55club_image" placeholder="https://… (leave blank for default)"></div>
         <div class="f-row" style="grid-column:1/-1"><label>Privacy Policy</label>
@@ -869,7 +869,7 @@ const settingsKeys=['bot_token','support_bot_token','bot_username','support_bot_
   'channel_id','channel_invite','admin_chat_id','admin_username','admin_password',
   'notify_chat_ids','site_url','panel_url','kimipay_app_id','kimipay_api_key',
   'refer_commission','min_withdrawal','max_withdrawal',
-  'privacy_policy','terms_conditions','support_greeting','support_auto_reply','deepseek_api_keys','game_55club_image'];
+  'privacy_policy','terms_conditions','support_greeting','support_auto_reply','gemini_api_keys','game_55club_image'];
 
 async function loadSettings(){
   const r=await fetch('/admin/api/settings');
