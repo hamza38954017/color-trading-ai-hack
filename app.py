@@ -154,6 +154,25 @@ def api_ai_predict():
     fb.patch("ai_stats/totals",{"total_predictions":(fb.get("ai_stats/totals/total_predictions") or 0)+1})
     return jsonify(prediction)
 
+
+@app.route("/api/ai_predict_record",methods=["POST"])
+@rate_limit(20,60)
+def api_ai_predict_record():
+    """Lightweight endpoint — just stores prediction for win/loss history. No AI call."""
+    data      = request.get_json(silent=True) or {}
+    chat_id   = security.sanitize_str(data.get("chat_id",""),20)
+    period_id = security.sanitize_str(str(data.get("period_id","")),30)
+    game      = security.sanitize_str(data.get("game","WinGo_3M"),20)
+    mode      = security.sanitize_str(data.get("mode","3min"),20)
+    pred      = data.get("prediction",{})
+    if not chat_id or not period_id: return jsonify({"ok":False}),400
+    if security.check_key_ban(chat_id,""): return jsonify({"ok":False}),403
+    record = {"chat_id":chat_id,"period_id":period_id,"game":game,"mode":mode,
+              "prediction":pred,"actual":None,"result":None,"time":now_str(),"ts":now_ts()}
+    fb.put(f"ai_predictions/{chat_id}/{period_id}",record)
+    fb.patch("ai_stats/totals",{"total_predictions":(fb.get("ai_stats/totals/total_predictions") or 0)+1})
+    return jsonify({"ok":True})
+
 @app.route("/api/record_result",methods=["POST"])
 @rate_limit(20,60)
 def api_record_result():
@@ -207,8 +226,13 @@ a{{display:inline-block;background:#00ff41;color:#050807;font-weight:700;padding
     cfg_data=fb.get_config() or {}
     from bot import _get_active_license
     lic=_get_active_license(chat_id) or {}
+    # Pass ALL gemini keys — browser will round-robin client-side
+    gemini_keys_raw = fb.cfg("gemini_api_keys","") or ""
+    gemini_keys_list = [k.strip() for k in gemini_keys_raw.split(",") if k.strip()]
     return render_template("predictor.html",chat_id=chat_id,display_name=display_name,
-        site_settings=json.dumps(site_settings),cfg=json.dumps(cfg_data),expiry_str=lic.get("expiry_str",""))
+        site_settings=json.dumps(site_settings),cfg=json.dumps(cfg_data),
+        expiry_str=lic.get("expiry_str",""),
+        gemini_keys=json.dumps(gemini_keys_list))
 
 @app.route("/api/validate_key",methods=["POST"])
 @rate_limit(10,60)
