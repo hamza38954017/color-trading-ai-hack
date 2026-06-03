@@ -256,12 +256,12 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 .app-scroll{width:100%;overflow-y:auto;overflow-x:hidden;min-height:100vh}
 
 /* App Header */
-.app-header{background:rgba(5,8,7,.95);border-bottom:1px solid var(--bg);padding:12px 16px;
+.app-header{background:rgba(5,8,7,.95);border-bottom:1px solid var(--bg);padding:7px 12px;
   display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20;
   backdrop-filter:blur(10px)}
 .app-header-left{display:flex;align-items:center;gap:10px}
 .header-skull{font-size:28px;filter:drop-shadow(0 0 10px var(--gg))}
-.header-title-text{font-family:Orbitron,sans-serif;font-size:22px;font-weight:900;color:var(--pg);letter-spacing:2px;text-shadow:0 0 20px rgba(0,255,65,.45)}
+.header-title-text{font-family:Orbitron,sans-serif;font-size:16px;font-weight:900;color:var(--pg);letter-spacing:1px;text-shadow:0 0 14px rgba(0,255,65,.4)}
 .header-v{color:var(--ar);font-size:17px}
 .app-header-right{display:flex;align-items:center;gap:8px}
 .btn-username{background:rgba(0,255,65,.1);border:1px solid var(--pg);color:var(--pg);
@@ -369,7 +369,7 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 ═══════════════════════════════════════ */
 #predictionPage{justify-content:flex-start;padding:0}
 .pred-scroll{width:100%;overflow-y:auto;min-height:100vh}
-.pred-header{background:rgba(5,8,7,.95);border-bottom:1px solid var(--bg);padding:12px 16px;
+.pred-header{background:rgba(5,8,7,.95);border-bottom:1px solid var(--bg);padding:7px 12px;
   display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20;backdrop-filter:blur(10px)}
 .pred-header-left{display:flex;align-items:center;gap:10px}
 .pred-back-btn{background:transparent;border:1px solid var(--pg);color:var(--pg);
@@ -949,6 +949,8 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 <script>
 // ── Flask Template Variables (server-rendered) ──────────────
 const CHAT_ID      = '{{ chat_id }}';
+const GEMINI_KEYS  = {{ gemini_keys|safe }}; // injected server-side, only for authenticated users
+let   _gmRRIdx     = 0; // round-robin index
 const DISPLAY_NAME = '{{ display_name }}';
 const EXPIRY_STR   = '{{ expiry_str }}';
 const SITE_SETTINGS= {{ site_settings|safe }};
@@ -1383,6 +1385,53 @@ function renderLast10(list){
 }
 
 
+
+// ── Client-side Gemini API call (request from user IP, bypasses server IP block) ──
+function _getNextGeminiKey(){
+  if(!GEMINI_KEYS || !GEMINI_KEYS.length) return null;
+  const key = GEMINI_KEYS[_gmRRIdx % GEMINI_KEYS.length];
+  _gmRRIdx++;
+  return key;
+}
+
+async function callGeminiAI(last10, systemPrompt){
+  const key = _getNextGeminiKey();
+  if(!key) return {error:'No Gemini API key configured. Add keys in Admin Panel → Settings.'};
+
+  const modelName = 'gemini-2.0-flash-exp';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
+
+  const payload = {
+    system_instruction: { parts:[{ text: systemPrompt }] },
+    contents:           [{ parts:[{ text:
+      `Last 10 WinGo results (index 0 = most recent):\n${JSON.stringify(last10)}\n\n`+
+      `Each result: number(0-9), big_small(Big>=5/Small<5), color.\n`+
+      `Predict the next number. Reply ONLY with JSON.`
+    }]}]
+  };
+
+  const r = await fetch(url, {
+    method:  'POST',
+    headers: {'Content-Type':'application/json'},
+    body:    JSON.stringify(payload),
+  });
+
+  if(!r.ok){
+    const err = await r.text();
+    throw new Error(`Gemini HTTP ${r.status}: ${err.slice(0,120)}`);
+  }
+
+  const data  = await r.json();
+  let   text  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  // Strip markdown fences
+  if(text.startsWith('```')){ text=text.split('```')[1]; if(text.startsWith('json')) text=text.slice(4); }
+  text = text.trim();
+  // Extract JSON object
+  const m = text.match(/\{[\s\S]*\}/);
+  if(m) text = m[0];
+  return JSON.parse(text);
+}
+
 // ── Loading Dialog ────────────────────────────────────────────────────────────
 function showLoadingDialog(msg, sub){
   const d   = document.getElementById('loadingDialog');
@@ -1511,6 +1560,15 @@ async function _getResultInner(){
     showToastMsg('⏳ Wait for next round (less than 30 seconds remaining)'); return;
   }
 
+  // Guard: need at least 5 results for meaningful prediction
+  if(!wingoHistList || wingoHistList.length < 5){
+    showToastMsg('⏳ Fetching game data… please wait a moment');
+    // Try fetching immediately
+    const h = await fetchWingoHistory();
+    if(h && h.length) renderLast10(h);
+    else return;
+  }
+
   resultShown = true;
   document.getElementById('getResultBtn').disabled = true;
   document.getElementById('getResultBtn').textContent = '🤖 AI Analyzing…';
@@ -1531,31 +1589,34 @@ async function _getResultInner(){
     period:    item.issueNumber||'',
   }));
 
-  try{
-    const resp = await fetch('/api/ai_predict',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        chat_id:   CHAT_ID,
-        game:      getWingoGame(),
-        mode:      currentCycle,
-        last_10:   last10,
-        period_id: currentPeriodId||'',
-        timer_secs:timerSecs,
-      })
-    });
-    const pred = await resp.json();
+  const systemPrompt =
+    'You are an expert AI predictor for WinGo lottery. '+
+    'Analyze the last 10 results and predict the MOST PROBABLE next number (0-9). '+
+    'Big=number>=5, Small=number<5. '+
+    'Return ONLY valid JSON no markdown: '+
+    '{"number":<0-9>,"big_small":"<Big or Small>","confidence":<1-100>,"reasoning":"<one sentence>"}';
 
-    if(pred.error){
+  try{
+    // Call Gemini directly from browser — request uses USER IP not Render IP
+    const pred = await callGeminiAI(last10, systemPrompt);
+
+    if(!pred || pred.error){
       resTxt.textContent = 'AI ERROR';
-      showToastMsg('⚠️ '+(pred.message||pred.error));
+      showToastMsg('⚠️ '+(pred?.error||'AI request failed'));
       resetResultDisplay(); return;
     }
+
+    // Fire-and-forget: record prediction on server for history/stats
+    fetch('/api/ai_predict_record',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({chat_id:CHAT_ID,period_id:currentPeriodId||'',
+        game:getWingoGame(),mode:currentCycle,prediction:pred})
+    }).catch(()=>{});
 
     aiPrediction = pred;
     const num = parseInt(pred.number);
     const bs  = pred.big_small || (num>=5?'Big':'Small');
 
-    // Show ball image
     showAIResultBall(num, bs, ball, ballTxt, resTxt);
     showAIPredictionCard(pred, num, bs);
 
@@ -1563,8 +1624,8 @@ async function _getResultInner(){
     document.getElementById('waitBtn').style.display      = '';
 
   }catch(e){
-    console.error('[AI predict]',e);
-    showToastMsg('⚠️ Network error. Try again.');
+    console.error('[Gemini client]',e);
+    showToastMsg('⚠️ AI error: '+e.message.slice(0,80));
     resetResultDisplay();
   }
 }
