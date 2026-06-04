@@ -71,7 +71,7 @@ def ai_predict(last_10, mode):
     if not key:
         return {"error": "no_key", "number": None, "big_small": None}
 
-    model_name = "gemini-2.0-flash-exp"
+    model_name = "gemini-3.5-flash"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
 
     system_prompt = (
