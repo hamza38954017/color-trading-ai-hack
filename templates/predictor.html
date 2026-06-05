@@ -949,8 +949,6 @@ body{font-family:Rajdhani,sans-serif;background:var(--ddb);color:var(--tw);min-h
 <script>
 // ── Flask Template Variables (server-rendered) ──────────────
 const CHAT_ID      = '{{ chat_id }}';
-const GEMINI_KEYS  = {{ gemini_keys|safe }}; // injected server-side, only for authenticated users
-let   _gmRRIdx     = 0; // round-robin index
 const DISPLAY_NAME = '{{ display_name }}';
 const EXPIRY_STR   = '{{ expiry_str }}';
 const SITE_SETTINGS= {{ site_settings|safe }};
@@ -1386,52 +1384,6 @@ function renderLast10(list){
 
 
 
-// ── Client-side Gemini API call (request from user IP, bypasses server IP block) ──
-function _getNextGeminiKey(){
-  if(!GEMINI_KEYS || !GEMINI_KEYS.length) return null;
-  const key = GEMINI_KEYS[_gmRRIdx % GEMINI_KEYS.length];
-  _gmRRIdx++;
-  return key;
-}
-
-async function callGeminiAI(last10, systemPrompt){
-  const key = _getNextGeminiKey();
-  if(!key) return {error:'No Gemini API key configured. Add keys in Admin Panel → Settings.'};
-
-  const modelName = 'gemini-2.0-flash-exp';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
-
-  const payload = {
-    system_instruction: { parts:[{ text: systemPrompt }] },
-    contents:           [{ parts:[{ text:
-      `Last 10 WinGo results (index 0 = most recent):\n${JSON.stringify(last10)}\n\n`+
-      `Each result: number(0-9), big_small(Big>=5/Small<5), color.\n`+
-      `Predict the next number. Reply ONLY with JSON.`
-    }]}]
-  };
-
-  const r = await fetch(url, {
-    method:  'POST',
-    headers: {'Content-Type':'application/json'},
-    body:    JSON.stringify(payload),
-  });
-
-  if(!r.ok){
-    const err = await r.text();
-    throw new Error(`Gemini HTTP ${r.status}: ${err.slice(0,120)}`);
-  }
-
-  const data  = await r.json();
-  let   text  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  // Strip markdown fences
-  if(text.startsWith('```')){ text=text.split('```')[1]; if(text.startsWith('json')) text=text.slice(4); }
-  text = text.trim();
-  // Extract JSON object
-  const m = text.match(/\{[\s\S]*\}/);
-  if(m) text = m[0];
-  return JSON.parse(text);
-}
-
 // ── Loading Dialog ────────────────────────────────────────────────────────────
 function showLoadingDialog(msg, sub){
   const d   = document.getElementById('loadingDialog');
@@ -1589,29 +1541,27 @@ async function _getResultInner(){
     period:    item.issueNumber||'',
   }));
 
-  const systemPrompt =
-    'You are an expert AI predictor for WinGo lottery. '+
-    'Analyze the last 10 results and predict the MOST PROBABLE next number (0-9). '+
-    'Big=number>=5, Small=number<5. '+
-    'Return ONLY valid JSON no markdown: '+
-    '{"number":<0-9>,"big_small":"<Big or Small>","confidence":<1-100>,"reasoning":"<one sentence>"}';
-
   try{
-    // Call Gemini directly from browser — request uses USER IP not Render IP
-    const pred = await callGeminiAI(last10, systemPrompt);
+    // Call server — server calls HuggingFace DeepSeek-R1
+    const resp = await fetch('/api/ai_predict',{
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        chat_id:    CHAT_ID,
+        game:       getWingoGame(),
+        mode:       currentCycle,
+        last_10:    last10,
+        period_id:  currentPeriodId||'',
+        timer_secs: timerSecs,
+      })
+    });
+    const pred = await resp.json();
 
     if(!pred || pred.error){
       resTxt.textContent = 'AI ERROR';
-      showToastMsg('⚠️ '+(pred?.error||'AI request failed'));
+      showToastMsg('⚠️ '+(pred?.message||pred?.error||'AI request failed'));
       resetResultDisplay(); return;
     }
-
-    // Fire-and-forget: record prediction on server for history/stats
-    fetch('/api/ai_predict_record',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({chat_id:CHAT_ID,period_id:currentPeriodId||'',
-        game:getWingoGame(),mode:currentCycle,prediction:pred})
-    }).catch(()=>{});
 
     aiPrediction = pred;
     const num = parseInt(pred.number);
@@ -1624,7 +1574,7 @@ async function _getResultInner(){
     document.getElementById('waitBtn').style.display      = '';
 
   }catch(e){
-    console.error('[Gemini client]',e);
+    console.error('[AI predict]',e);
     showToastMsg('⚠️ AI error: '+e.message.slice(0,80));
     resetResultDisplay();
   }
