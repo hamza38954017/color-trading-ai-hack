@@ -4,8 +4,9 @@ Fixes: Support panel 404, wingo proxy, AI prediction, history, win/loss tracking
 """
 from flask import (Flask, request, jsonify, render_template, session,
                    redirect, url_for, send_from_directory, abort, make_response)
+from werkzeug.exceptions import HTTPException
 from functools import wraps
-import datetime, threading, os, time, json, secrets, hashlib
+import datetime, threading, os, time, json, secrets, hashlib, traceback
 import requests
 import firebase_helper as fb
 import kimipay as kp
@@ -22,6 +23,21 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", MAX_CONTENT_LENGTH=16*1024*1024)
+
+@app.errorhandler(Exception)
+def handle_api_errors(e):
+    """Ensure all API errors return JSON instead of Flask's default HTML."""
+    if request.path.startswith("/api/"):
+        if isinstance(e, HTTPException):
+            return jsonify({"error": f"HTTP Error: {e.name}"}), e.code
+        
+        # Log the actual python error to console for debugging
+        print("[API CRASH]", traceback.format_exc())
+        return jsonify({"error": f"Server Error: {str(e)}"}), 500
+        
+    if isinstance(e, HTTPException):
+        return e
+    return "Internal Server Error", 500
 
 @app.after_request
 def set_security_headers(resp):
@@ -140,25 +156,35 @@ def wingo_api():
 @app.route("/api/ai_predict",methods=["POST"])
 @rate_limit(10,60)
 def api_ai_predict():
-    data=request.get_json(silent=True) or {}
-    chat_id=security.sanitize_str(data.get("chat_id",""),20)
-    game=security.sanitize_str(data.get("game","WinGo_3M"),20)
-    mode=security.sanitize_str(data.get("mode","3min"),20)
-    last_10=data.get("last_10",[])
-    period_id=security.sanitize_str(str(data.get("period_id","")),30)
-    timer_secs=int(data.get("timer_secs",0))
+    data = request.get_json(silent=True) or {}
+    
+    chat_id   = security.sanitize_str(str(data.get("chat_id","")),20)
+    game      = security.sanitize_str(str(data.get("game","WinGo_3M")),20)
+    mode      = security.sanitize_str(str(data.get("mode","3min")),20)
+    period_id = security.sanitize_str(str(data.get("period_id","")),30)
+    last_10   = data.get("last_10",[])
+    
+    try:
+        timer_secs = int(data.get("timer_secs") or 0)
+    except (ValueError, TypeError):
+        timer_secs = 0
+
     if not chat_id: return jsonify({"error":"missing_chatid"}),400
     if security.check_key_ban(chat_id,""): return jsonify({"error":"banned"}),403
     if timer_secs<30: return jsonify({"error":"wait","message":"Wait for next round (timer < 30s)"}),400
+    
     existing=fb.get(f"ai_predictions/{chat_id}/{period_id}")
     if existing and existing.get("prediction") is not None:
         return jsonify({"cached":True,**existing["prediction"]})
+        
     prediction=ai_predict(last_10,mode)
     if prediction.get("error")=="no_key": return jsonify({"error":"AI not configured. Contact admin."}),503
     if prediction.get("error"): return jsonify({"error":f"AI error: {prediction['error'][:100]}"}),500
+    
     pred_record={"chat_id":chat_id,"period_id":period_id,"game":game,"mode":mode,"prediction":prediction,"actual":None,"result":None,"time":now_str(),"ts":now_ts()}
     fb.put(f"ai_predictions/{chat_id}/{period_id}",pred_record)
     fb.patch("ai_stats/totals",{"total_predictions":(fb.get("ai_stats/totals/total_predictions") or 0)+1})
+    
     return jsonify(prediction)
 
 
@@ -167,37 +193,50 @@ def api_ai_predict():
 def api_ai_predict_record():
     """Lightweight endpoint — just stores prediction for win/loss history. No AI call."""
     data      = request.get_json(silent=True) or {}
-    chat_id   = security.sanitize_str(data.get("chat_id",""),20)
+    
+    chat_id   = security.sanitize_str(str(data.get("chat_id","")),20)
     period_id = security.sanitize_str(str(data.get("period_id","")),30)
-    game      = security.sanitize_str(data.get("game","WinGo_3M"),20)
-    mode      = security.sanitize_str(data.get("mode","3min"),20)
+    game      = security.sanitize_str(str(data.get("game","WinGo_3M")),20)
+    mode      = security.sanitize_str(str(data.get("mode","3min")),20)
     pred      = data.get("prediction",{})
+    
     if not chat_id or not period_id: return jsonify({"ok":False}),400
     if security.check_key_ban(chat_id,""): return jsonify({"ok":False}),403
+    
     record = {"chat_id":chat_id,"period_id":period_id,"game":game,"mode":mode,
               "prediction":pred,"actual":None,"result":None,"time":now_str(),"ts":now_ts()}
     fb.put(f"ai_predictions/{chat_id}/{period_id}",record)
     fb.patch("ai_stats/totals",{"total_predictions":(fb.get("ai_stats/totals/total_predictions") or 0)+1})
+    
     return jsonify({"ok":True})
 
 @app.route("/api/record_result",methods=["POST"])
 @rate_limit(20,60)
 def api_record_result():
     data=request.get_json(silent=True) or {}
-    chat_id=security.sanitize_str(data.get("chat_id",""),20)
+    chat_id=security.sanitize_str(str(data.get("chat_id","")),20)
     period_id=security.sanitize_str(str(data.get("period_id","")),30)
-    actual=int(data.get("actual_number",-1))
+    
+    try:
+        actual=int(data.get("actual_number",-1))
+    except (ValueError, TypeError):
+        actual=-1
+        
     if not chat_id or actual<0: return jsonify({"ok":False}),400
+    
     pred_record=fb.get(f"ai_predictions/{chat_id}/{period_id}")
     if not pred_record: return jsonify({"ok":False,"reason":"no_prediction"})
+    
     pred_num=pred_record.get("prediction",{}).get("number")
     if pred_num is None: return jsonify({"ok":False,"reason":"no_number"})
+    
     win=(int(pred_num)==int(actual)); result_str="win" if win else "loss"
     fb.patch(f"ai_predictions/{chat_id}/{period_id}",{"actual":actual,"result":result_str})
     ust=fb.get(f"ai_user_stats/{chat_id}") or {"wins":0,"losses":0,"total":0}
     fb.put(f"ai_user_stats/{chat_id}",{"chat_id":chat_id,"wins":ust.get("wins",0)+(1 if win else 0),"losses":ust.get("losses",0)+(0 if win else 1),"total":ust.get("total",0)+1})
     tot=fb.get("ai_stats/totals") or {}
     fb.patch("ai_stats/totals",{"total_wins":tot.get("total_wins",0)+(1 if win else 0),"total_losses":tot.get("total_losses",0)+(0 if win else 1),"total_predictions":tot.get("total_predictions",1)})
+    
     return jsonify({"ok":True,"win":win,"result":result_str})
 
 # ── Website ────────────────────────────────────────────────────────────────────
