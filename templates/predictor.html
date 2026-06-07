@@ -1478,9 +1478,10 @@ function updateTimerDisplay(){
 
 function resetResultDisplay(){
   const ball = document.getElementById('resultBall');
+  ball.innerHTML = '';
   ball.className = 'result-ball ball-ready';
-  document.getElementById('ballText').className   = 'ball-inner-text ball-question';
-  document.getElementById('ballText').textContent  = '?';
+  // Restore original ball internals
+  ball.innerHTML = '<div class="ball-seam seam-1"></div><div class="ball-seam seam-2"></div><div class="ball-inner-text ball-question" id="ballText">?</div>';
   document.getElementById('resultText').textContent = 'READY';
   document.getElementById('resultText').className   = 'result-text green';
   resultShown = false;
@@ -1581,17 +1582,31 @@ async function _getResultInner(){
 }
 
 function showAIResultBall(num, bs, ball, ballTxt, resTxt){
-  // Use wingo ball image
-  const imgEl = document.createElement('img');
-  imgEl.src   = `/website/assets/wingo/ball_${num}.webp`;
-  imgEl.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:50%;animation:spin .6s cubic-bezier(.34,1.56,.64,1) both';
-  imgEl.onerror = ()=>{ imgEl.remove(); ballTxt.textContent=String(num); ballTxt.className='ball-inner-text ball-label-num'; };
-
-  ball.innerHTML='';
-  ball.appendChild(imgEl);
+  // Step 1: Show CSS-styled ball with number immediately (always visible)
+  ball.innerHTML = '';
   ball.className = `result-ball ${bs==='Big'?'ball-big':'ball-small'}`;
+
+  // Restore ballText with the number
+  const txt = document.getElementById('ballText');
+  if(txt){
+    txt.className   = 'ball-inner-text ball-label-num';
+    txt.textContent = String(num);
+    txt.style.cssText = 'font-size:42px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5);z-index:2;position:relative';
+    ball.appendChild(txt);
+  }
+
+  // Step 2: Try to load webp image on top (replaces number if it loads)
+  const imgEl = document.createElement('img');
+  imgEl.src = `/website/assets/wingo/ball_${num}.webp`;
+  imgEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;border-radius:50%;animation:spin .6s cubic-bezier(.34,1.56,.64,1) both;z-index:3';
+  imgEl.onload  = ()=>{ if(txt) txt.style.display='none'; };
+  imgEl.onerror = ()=>{ imgEl.remove(); if(txt) txt.style.display=''; };
+  ball.style.position = 'relative';
+  ball.appendChild(imgEl);
+
+  // Step 3: Update result text
   resTxt.textContent = String(num);
-  resTxt.className   = 'result-text green';
+  resTxt.className   = bs==='Big' ? 'result-text orange' : 'result-text blue';
 }
 
 function showAIPredictionCard(pred, num, bs){
